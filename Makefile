@@ -1,3 +1,4 @@
+SHELL := /usr/bin/env bash -e
 .DEFAULT_GOAL := build
 
 .PHONY: default
@@ -7,9 +8,14 @@ default: build ;
 build: require-go ## build the thing
 	go build -o ./bin/doit main.go
 
+.PHONY: docs require-asciidoc
+docs: ## build the docs
+	@find docs/adoc -type f -name "*.adoc" | xargs -n 1 asciidoc
+	@mv docs/adoc/*.html docs/html
+
 .PHONY: clean
 clean: ## clean out the binaries
-	rm -rf ./bin/*
+	@rm -rf ./bin/*
 
 .PHONY: require-%
 require-%:
