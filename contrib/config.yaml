@@ -1,0 +1,4 @@
+storage:
+  type: file
+  config:
+    path: $HOME/.config/doit/data.json
