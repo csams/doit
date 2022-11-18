@@ -9,7 +9,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/csams/doit/pkg/apis/task"
+	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/commands"
 	"github.com/csams/doit/pkg/storage"
 	"github.com/csams/doit/pkg/storage/factory"
@@ -34,7 +34,7 @@ type fileStorage struct {
 	Path string
 }
 
-func (f *fileStorage) Get(id task.Identity) (*task.Task, error) {
+func (f *fileStorage) Get(id uint) (*apis.Task, error) {
 	tasks, err := f.load()
 	if err != nil {
 		return nil, err
@@ -75,13 +75,13 @@ func (f *fileStorage) Update(c *commands.Modify) error {
 	return fmt.Errorf("no task to update for id [%d]", c.Id)
 }
 
-func (f *fileStorage) Delete(c task.Identity) error {
+func (f *fileStorage) Delete(c uint) error {
 	tasks, err := f.load()
 	if err != nil {
 		return err
 	}
 
-	var res []*task.Task
+	var res []*apis.Task
 
 	for _, t := range tasks {
 		if t.ID != c {
@@ -92,7 +92,7 @@ func (f *fileStorage) Delete(c task.Identity) error {
 	return f.save(res)
 }
 
-func (f *fileStorage) Search(c *commands.Search) ([]*task.Task, error) {
+func (f *fileStorage) Search(c *commands.Search) ([]*apis.Task, error) {
 	return f.load()
 }
 
@@ -115,8 +115,8 @@ func ensureExists(p string) error {
 	return nil
 }
 
-func (f *fileStorage) load() ([]*task.Task, error) {
-	var tasks []*task.Task
+func (f *fileStorage) load() ([]*apis.Task, error) {
+	var tasks []*apis.Task
 
 	file, err := os.Open(f.Path)
 	if err != nil {
@@ -127,7 +127,7 @@ func (f *fileStorage) load() ([]*task.Task, error) {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		t := task.Task{}
+		t := apis.Task{}
 		err := json.Unmarshal(scanner.Bytes(), &t)
 		if err != nil {
 			return nil, err
@@ -138,7 +138,7 @@ func (f *fileStorage) load() ([]*task.Task, error) {
 	return tasks, nil
 }
 
-func (f *fileStorage) save(tasks []*task.Task) error {
+func (f *fileStorage) save(tasks []*apis.Task) error {
 	file, err := os.OpenFile(f.Path, os.O_RDWR|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -166,15 +166,15 @@ func (f *fileStorage) save(tasks []*task.Task) error {
 	return nil
 }
 
-func generateId(tasks []*task.Task) task.Identity {
+func generateId(tasks []*apis.Task) uint {
 	if len(tasks) == 0 {
-		return task.Identity(1)
+		return 1
 	}
 
 	prev := tasks[0].ID
 	for _, t := range tasks[1:] {
 		if t.ID > prev+1 {
-			return task.Identity(prev + 1)
+			return prev + 1
 		}
 		prev = t.ID
 	}

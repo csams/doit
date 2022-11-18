@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	util "github.com/csams/doit/cmd/util"
-	"github.com/csams/doit/pkg/apis/task"
+	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/commands"
 	storage "github.com/csams/doit/pkg/storage"
 	factory "github.com/csams/doit/pkg/storage/factory"
@@ -73,7 +73,7 @@ func applyAddFlags(add *commands.Create, flags *pflag.FlagSet) error {
 	if status != nil {
 		add.Status = *status
 	} else {
-		add.Status = task.Todo
+		add.Status = apis.Todo
 	}
 
 	tags, err := util.GetTags(flags)

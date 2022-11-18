@@ -1,0 +1,77 @@
+= Data Model
+
+.Task
+[cols="1,2", options="header", width="50%"]
+|===
+|Name |Type
+
+|id          |unsigned int64 (pk, unique)
+|owner       |User (fk)
+|description |string
+|createdat   |datetime
+|updatedat   |datetime
+|due         |datetime
+|priority    |unsigned int
+|private     |boolean
+|deleted     |boolean
+|state       |string (open, closed)
+|status      |string (backlog, todo, doing, done, abandoned)
+|===
+
+Options for tags:
+
+1. Task field of json type encoding a list of strings. Need to look into how I'd query it.
+2. Table with two fields:
+
+[cols="1,2", options="header", width="30%"]
+|===
+|Name |Type
+
+|Task |unsigned int64
+|Tag  |string
+|===
+
+.User
+[cols="1,2", options="header", width="50%"]
+|===
+|Name     |Type
+
+|username |string (pk, unique)
+|name     | string
+|===
+
+
+.Policy
+[cols="1,2", options="header", width="50%"]
+|===
+|Name     |Type
+
+|owner    |string
+|delegate |string
+|mode     |unsigned int (enum of "read-only" or "update")
+|===
+
+
+.Comment
+[cols="1,2", options="header", width="50%"]
+|===
+|Name        |Type
+
+|task        |unsigned int
+|created     |datetime
+|updated     |datetime
+|description |string
+|===
+
+
+.Annotation
+[cols="1,2", options="header", width="50%"]
+|===
+|Name        |Type
+
+|task        |unsigned int
+|created     |datetime
+|updated     |datetime
+|description |string
+|===
+

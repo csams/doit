@@ -12,6 +12,7 @@ build: require-go ## build the thing
 docs: ## build the docs
 	@find docs/adoc -type f -name "*.adoc" | xargs -n 1 asciidoc
 	@mv docs/adoc/*.html docs/html
+	@find docs/html -type f
 
 .PHONY: clean
 clean: ## clean out the binaries

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/csams/doit/pkg/apis/task"
+	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/commands"
 	"github.com/csams/doit/pkg/storage"
 	"github.com/csams/doit/pkg/storage/factory"
@@ -25,9 +25,9 @@ func start(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	started := task.Status(task.Started)
+	started := apis.Status(apis.Doing)
 	mod := &commands.Modify{
-		Id:     task.Identity(id),
+		Id:     uint(id),
 		Status: &started,
 	}
 

@@ -3,7 +3,7 @@
 package sql
 
 import (
-	"github.com/csams/doit/pkg/apis/task"
+	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/commands"
 	"github.com/csams/doit/pkg/storage"
 	"github.com/csams/doit/pkg/storage/factory"

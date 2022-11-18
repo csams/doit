@@ -1,0 +1,240 @@
+= GORM Modeling
+
+== Belongs To
+This is a one-to-one relationship between two models.
+
+Each instance of the declaring model "belongs to" one instance of the other model.
+
+An example is a User belongs to a Company.
+
+[source,go]
+----
+// `User` belongs to `Company`, `CompanyID` is the foreign key
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID int // Name of the Model + its primary key field name.
+  Company   Company
+}
+
+type Company struct {
+  ID   int // field named ID is the conventional primary key
+  Name string
+}
+----
+
+=== Override Foreign Key
+For the above example, to define the User model that belongs to Company, the
+foreign key should be CompanyID by convention.
+
+However, GORM provides a way to customize the foreign key.
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  Name         string
+  CompanyRefer int
+  Company      Company `gorm:"foreignKey:CompanyRefer"`
+  // use CompanyRefer as foreign key
+}
+
+type Company struct {
+  ID   int
+  Name string
+}
+----
+
+=== Override References
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID string  // still Model + ID by convention, but is now a string due to the reference below.
+  Company   Company `gorm:"references:Code"` // use Code as references
+}
+
+type Company struct {
+  ID   int
+  Code string
+  Name string
+}
+----
+
+== Has One
+_How is this different from belongs to?_ This association indicates that each
+instance of a model contains or possesses one instance of another model.
+
+Here a User belongs to a Company. The Company is embedded in the User object,
+and the User object contains fields referencing the Company. The Company has no
+references to the Users. *Note that many Users could belong to one Company.*
+
+[source,go]
+----
+// `User` belongs to `Company`, `CompanyID` is the foreign key
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID int // Name of the Model + its primary key field name.
+  Company   Company
+}
+
+type Company struct {
+  ID   int // field named ID is the conventional primary key
+  Name string
+}
+----
+
+But here a User possesses a CreditCard, and *no other Users may possess it.*
+This is a bi-directional one-to-one relationship.
+
+[source,go]
+----
+// User has one CreditCard, UserID is the foreign key
+type User struct {
+  gorm.Model
+  CreditCard CreditCard
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number string
+  UserID uint
+}
+----
+
+=== Override Foreign Key
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  CreditCard CreditCard `gorm:"foreignKey:UserName"`
+  // use UserName as foreign key
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number   string
+  UserName string
+}
+----
+
+=== Override References
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  Name       string     `gorm:"index"`
+  CreditCard CreditCard `gorm:"foreignKey:UserName;references:Name"`
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number   string
+  UserName string
+}
+----
+
+== Has Many
+A User could have *many* CreditCards with each CreditCard belonging to only
+that user.
+
+[source,go]
+----
+// User has many CreditCards, UserID is the foreign key
+type User struct {
+  gorm.Model
+  CreditCards []CreditCard  // this user's credit cards
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number string
+  UserID uint // the user to which this credit card belongs
+}
+----
+
+=== Override Foreign Key
+The CreditCard model may use some field other than "Model + ID" to refer to its
+owning User's primary key. If it does, we note the non-standard foreign key in
+the User's CreditCards field.
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  CreditCards []CreditCard `gorm:"foreignKey:UserRefer"`
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number    string
+  UserRefer uint
+}
+----
+
+=== Override References
+Not only might the Credit Card use a non-standard field to refer to its owning
+User, but that field may reference something other than the User's primary key
+field. Here, the foreignKey field is UserNumber, and it refers to the
+MemberNumber field in User.
+
+[source,go]
+----
+type User struct {
+  gorm.Model
+  MemberNumber string
+  CreditCards  []CreditCard `gorm:"foreignKey:UserNumber;references:MemberNumber"`
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number     string
+  UserNumber string
+}
+----
+
+
+=== Many to Many
+Say a User can speak many Languages, and many users can speak a specified Language.
+This is like saying a User may share his CreditCards.
+
+[source,go]
+----
+// User has and belongs to many languages, `user_languages` is the join table
+type User struct {
+  gorm.Model
+  Languages []Language `gorm:"many2many:user_languages;"`
+}
+
+type Language struct {
+  gorm.Model
+  Name string
+}
+----
+
+=== Back References
+We know many users can speak many languages, but we may want to start with a
+language and get all of the users who speak it.
+
+Notice the pointers in each of the models.
+
+[source,go]
+----
+// User has and belongs to many languages, use `user_languages` as join table
+type User struct {
+  gorm.Model
+  Languages []*Language `gorm:"many2many:user_languages;"`
+}
+
+type Language struct {
+  gorm.Model
+  Name string
+  Users []*User `gorm:"many2many:user_languages;"`
+}
+----
+

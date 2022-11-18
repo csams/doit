@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/csams/doit/pkg/apis/task"
 	"github.com/csams/doit/pkg/storage"
 	"github.com/csams/doit/pkg/storage/factory"
 	"github.com/spf13/cobra"
@@ -30,5 +29,5 @@ func removeTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("couldn't parse task id to remove: %e", err)
 	}
 
-	return store.Delete(task.Identity(id))
+	return store.Delete(uint(id))
 }

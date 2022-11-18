@@ -3,21 +3,21 @@ package commands
 import (
 	"time"
 
-	"github.com/csams/doit/pkg/apis/task"
+	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/set"
 )
 
 type Modify struct {
-	Id          task.Identity `json:"id"`
+	Id          uint          `json:"id"`
 	Description *string       `json:"desc"`
 	Due         *time.Time    `json:"due,omitempty"`
-	Priority    task.Priority `json:"priority,omitempty"`
-	State       *task.State   `json:"state"`
-	Status      *task.Status  `json:"status"`
+	Priority    apis.Priority `json:"priority,omitempty"`
+	State       *apis.State   `json:"state"`
+	Status      *apis.Status  `json:"status"`
 	Tags        []string      `json:"tags,omitempty"`
 }
 
-func (update *Modify) Apply(orig *task.Task) {
+func (update *Modify) Apply(orig *apis.Task) {
 	if update.Description != nil {
 		orig.Description = *update.Description
 	}
@@ -26,7 +26,7 @@ func (update *Modify) Apply(orig *task.Task) {
 		orig.Due = update.Due
 	}
 
-	if update.Priority != task.Lowest {
+	if update.Priority != 0 {
 		orig.Priority = update.Priority
 	}
 

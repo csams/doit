@@ -1,0 +1,34 @@
+= Shared TODO
+:toc:
+
+== Overview
+Shared TODO allows multiple users to create task lists and share them with
+others. Each user has one list and may grant others view-only or edit access to
+it.
+
+A task list is private to its creator unless explicitly shared.
+
+A task may be marked private so uesrs other than the task owner may not view or
+edit it even if the owner's task list is shared.
+
+A user logs into the application using an OAuth2 flow.
+
+A user interacts with lists from the command line.
+
+== Data Model
+The primary pieces of data are the Task and the User.
+
+Secondary data enable task list sharing.
+
+== Components
+- CLI for user interaction
+- REST server (resource server)
+- SQL Database to store tasks
+- OIDC authorization server
+
+== Operational Features
+- Metrics to enable SLOs, alerts, and dashboards
+- Audit logging
+- Searchable logs
+
+// vim: set syntax=asciidoc:

@@ -1,53 +1,52 @@
-package task
+package apis
 
 import (
 	"sort"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/csams/doit/pkg/set"
 )
 
-type Identity uint64
-
 // Task is some unit of work to do
 type Task struct {
-	ID          Identity         `json:"id" gorm:"primaryKey"`
+	gorm.Model
+
+	UserName    string           `json:"username"`
+	User        User             `gorm:"foreignKey:UserName"`
 	Description string           `json:"desc"`
-	CreatedAt   time.Time        `json:"createdAt"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
 	Due         *time.Time       `json:"due,omitempty"`
 	Priority    Priority         `json:"priority,omitempty"`
+	Private     bool             `json:"private,omitempty"`
 	State       State            `json:"state"`
 	Status      Status           `json:"status"`
 	Tags        *set.Set[string] `json:"tags,omitempty"`
+	Comments    []Comment        `json:"comments,omitempty" gorm:"constraint:OnDelete:CASCADE"`
+	Annotations []Annotation     `json:"annotations,omitempty" gorm:"constraint:OnDelete:CASCADE"`
 }
 
-type State string
-type Status string
-type Priority int32
+// Priority is how urgent the task is. 0 is lowest priority.
+type Priority uint8
 
-const (
-	Undefined Priority = -1
-	Lowest    Priority = 0
-	Low       Priority = 1
-	Medium    Priority = 2
-	High      Priority = 3
-)
+type State string
 
 const (
 	Closed State = "closed"
 	Open   State = "open"
 )
 
+type Status string
+
 const (
+	Backlog   Status = "backlog"
 	Todo      Status = "todo"
-	Started   Status = "started"
-	Stopped   Status = "stopped"
+	Doing     Status = "doing"
 	Done      Status = "done"
 	Abandoned Status = "abandoned"
 )
 
-var validStatuses = set.New(Todo, Started, Done, Abandoned)
+var validStatuses = set.New(Todo, Todo, Doing, Done, Abandoned)
 
 func IsValidStatus(s Status) bool {
 	return validStatuses.Has(s)
@@ -68,20 +67,4 @@ func StatusStrings() []string {
 		statuses = append(statuses, string(s))
 	}
 	return statuses
-}
-
-func (p Priority) String() string {
-	switch p {
-	case -1:
-		return "Undefined"
-	case 0:
-		return "Lowest"
-	case 1:
-		return "Low"
-	case 2:
-		return "Medium"
-	case 3:
-		return "High"
-	}
-	return "Lowest"
 }

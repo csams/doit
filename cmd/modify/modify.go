@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/csams/doit/cmd/util"
-	"github.com/csams/doit/pkg/apis/task"
 	"github.com/csams/doit/pkg/commands"
 	storage "github.com/csams/doit/pkg/storage"
 	factory "github.com/csams/doit/pkg/storage/factory"
@@ -37,7 +36,7 @@ func modifyTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("not a valid task id: [%s]; %e", args[0], err)
 	}
 
-	update.Id = task.Identity(id)
+	update.Id = uint(id)
 
 	description := args[1]
 	if description == "" {
@@ -76,7 +75,7 @@ func applyFlags(update *commands.Modify, flags *pflag.FlagSet) error {
 		return err
 	}
 
-	if prio != task.Undefined {
+	if prio != 0 {
 		update.Priority = prio
 	}
 
