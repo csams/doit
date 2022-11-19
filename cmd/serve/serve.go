@@ -14,7 +14,7 @@ func NewCommand() *cobra.Command {
 	options := NewOptions()
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Start the TODO server",
+		Short: "Start the TODO server.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := options.Complete(viper.GetViper()); err != nil {
 				return err

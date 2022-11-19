@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/csams/doit/cmd/migrate"
 	"github.com/csams/doit/cmd/serve"
 )
 
@@ -30,6 +31,7 @@ func init() {
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
 	rootCmd.AddCommand(serve.NewCommand())
+	rootCmd.AddCommand(migrate.NewCommand())
 }
 
 func initConfig() {
