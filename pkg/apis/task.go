@@ -13,17 +13,21 @@ import (
 type Task struct {
 	gorm.Model
 
-	UserName    string           `json:"username"`
-	User        User             `gorm:"foreignKey:UserName"`
-	Description string           `json:"desc"`
-	Due         *time.Time       `json:"due,omitempty"`
-	Priority    Priority         `json:"priority,omitempty"`
-	Private     bool             `json:"private,omitempty"`
-	State       State            `json:"state"`
-	Status      Status           `json:"status"`
-	Tags        *set.Set[string] `json:"tags,omitempty"`
-	Comments    []Comment        `json:"comments,omitempty" gorm:"constraint:OnDelete:CASCADE"`
-	Annotations []Annotation     `json:"annotations,omitempty" gorm:"constraint:OnDelete:CASCADE"`
+	OwnerName string `json:"owner"`
+	Owner     User   `gorm:"foreignKey:Username;references:OwnerName"`
+
+	AssigneeName string `json:"assignee"`
+	Assignee     User   `gorm:"foreignKey:Username;references:AssigneeName"`
+
+	Description string       `json:"desc"`
+	Due         *time.Time   `json:"due,omitempty"`
+	Priority    Priority     `json:"priority,omitempty"`
+	Private     bool         `json:"private,omitempty"`
+	State       State        `json:"state"`
+	Status      Status       `json:"status"`
+	Comments    []Comment    `json:"comments,omitempty" gorm:"constraint:OnDelete:CASCADE"`
+	Annotations []Annotation `json:"annotations,omitempty" gorm:"constraint:OnDelete:CASCADE"`
+	// Tags        *set.Set[string] `json:"tags,omitempty"`
 }
 
 // Priority is how urgent the task is. 0 is lowest priority.

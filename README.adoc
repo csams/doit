@@ -13,7 +13,7 @@ edit it even if the owner's task list is shared.
 
 A user logs into the application using an OAuth2 flow.
 
-A user interacts with lists from the command line.
+A user manages tasks from the command line.
 
 == Data Model
 The primary pieces of data are the Task and the User.

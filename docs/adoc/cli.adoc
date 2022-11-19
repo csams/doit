@@ -1,7 +1,9 @@
+= CLI
+
 == CRUD (like) actions
 
 === new 
-Adds a new task to the list
+Adds a new task to the list. A new task is assigned to its owner.
 
 === modify
 Generic update function that can change several task attributes
@@ -41,6 +43,14 @@ mark a task as shareable. this is the opposite of private. it is the default.
 
 
 == Reporting
+
+=== list
+See all assigned tasks across all lists. You can assign tasks to users who do
+not have edit access to your list. In that case, they have edit access to only
+their assigned tasks.
+
+=== who
+See who has access to your list and in what mode.
 
 
 // vim: set syntax=asciidoc:

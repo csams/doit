@@ -10,29 +10,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/csams/doit/cmd/add"
-	"github.com/csams/doit/cmd/modify"
-	"github.com/csams/doit/cmd/remove"
-	"github.com/csams/doit/cmd/search"
-	"github.com/csams/doit/cmd/start"
-	"github.com/csams/doit/cmd/stop"
-	store "github.com/csams/doit/pkg/storage/factory"
-	_ "github.com/csams/doit/pkg/storage/file"
+	"github.com/csams/doit/cmd/serve"
 )
 
 var (
 	rootCmd = &cobra.Command{
 		Use: "doit",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			initConfig()
-
-			ctx := cmd.Context()
-			st, err := store.New(viper.GetViper())
-			if err != nil {
-				return err
-			}
-			cmd.SetContext(context.WithValue(ctx, store.ContextKey, st))
-			return nil
 		},
 	}
 )
@@ -44,13 +29,7 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.config/doit/config.yaml)")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
-	rootCmd.AddCommand(add.NewCommand())
-	rootCmd.AddCommand(remove.NewCommand())
-	rootCmd.AddCommand(modify.NewCommand())
-	rootCmd.AddCommand(start.NewCommand())
-	rootCmd.AddCommand(stop.NewCommand())
-	rootCmd.AddCommand(search.NewCommand("search"))
-	rootCmd.AddCommand(search.NewCommand("list"))
+	rootCmd.AddCommand(serve.NewCommand())
 }
 
 func initConfig() {
