@@ -10,6 +10,7 @@ build: require-go ## build the thing
 
 .PHONY: docs require-asciidoc
 docs: ## build the docs
+	@mkdir -p docs/html
 	@find docs/adoc -type f -name "*.adoc" | xargs -n 1 asciidoctor
 	@mv docs/adoc/*.html docs/html
 	@find docs/html -type f
