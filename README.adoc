@@ -1,32 +1,36 @@
 = Shared TODO
 :toc:
 
+I'm using this project to play around with writing services in go-lang.
+
 == Overview
+
 Shared TODO allows multiple users to create task lists and share them with
 others. Each user has one list and may grant other users view-only or edit
 access to it.
 
-A task list is private to its creator unless explicitly shared.
+A task list is private to its creator unless explicitly shared with someone
+else.
 
 A task may be marked private so users other than the task owner may not view or
 edit it even if the owner's task list is shared.
+
+A task may be assigned to someone even if the task list isn't shared. Users can
+view and edit tasks they own and tasks to which they are assigned.
+
+Tasks can have comments and annotations.
 
 A user logs into the application using an OAuth2 flow.
 
 A user manages tasks from the command line.
 
-== Data Model
-The primary pieces of data are the Task and the User.
-
-Secondary data enable task list sharing.
-
 == Components
-- CLI for user interaction
-- REST server (resource server)
-- SQL Database to store tasks
-- OIDC authorization server
+- CLI for user interaction (https://github.com/gdamore/tcell[tcell], might look at others)
+- REST server (resource server) for tasks and sharing (https://github.com/go-chi/chi[go-chi])
+- SQL Database to store tasks (https://gorm.io[gorm])
+- OAuth2/OIDC authorization server (https://www.keycloak.org/[Keycloak])
 
 == Operational Features
-- Metrics to enable SLOs, alerts, and dashboards
+- Metrics to enable SLOs, alerts, and dashboards (https://prometheus.io/[Prometheus], https://grafana.com/[Grafana])
 - Audit logging
-- Searchable logs
+- Searchable logs (https://grafana.com/oss/loki/[Grafana Loki])
