@@ -31,11 +31,6 @@ func NewCommand() *cobra.Command {
 				return err
 			}
 
-			// TODO: move this to a separate command
-			if err := storage.Migrate(db); err != nil {
-				return err
-			}
-
 			handler := routes.NewHandler(db)
 			server, err := server.New(config.Server, handler)
 			if err != nil {
