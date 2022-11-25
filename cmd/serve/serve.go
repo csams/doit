@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/csams/doit/pkg/storage"
 )
 
-func NewCommand() *cobra.Command {
+func NewCommand(log logr.Logger) *cobra.Command {
 	options := NewOptions()
 	cmd := &cobra.Command{
 		Use:   "serve",
@@ -31,8 +32,8 @@ func NewCommand() *cobra.Command {
 				return err
 			}
 
-			handler := routes.NewHandler(db)
-			server, err := server.New(config.Server, handler)
+			handler := routes.NewHandler(db, log.WithName("rootHandler"))
+			server, err := server.New(config.Server, handler, log.WithName("server"))
 			if err != nil {
 				return err
 			}

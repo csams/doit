@@ -1,2 +1,0 @@
-Start building the routers.
-Wire in the config file for the database configuration.

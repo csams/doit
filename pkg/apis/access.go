@@ -7,8 +7,8 @@ import (
 )
 
 type Policy struct {
-	OwnerUsername    string `json:"owner_user_name" gorm:"primaryKey"`
-	DelegateUsername string `json:"delegate_user_name" gorm:"primaryKey"`
+	OwnerUserId    uint `json:"owner_user_id" gorm:"primaryKey"`
+	DelegateUserId uint `json:"delegate_user_id" gorm:"primaryKey"`
 
 	Mode PolicyMode `json:"mode"`
 

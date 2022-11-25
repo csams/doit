@@ -6,6 +6,7 @@ import (
 )
 
 type Options struct {
+	DSN string
 }
 
 func NewOptions() *Options {
@@ -20,5 +21,6 @@ func (o *Options) Validate() []error {
 }
 
 func (o *Options) Complete(v *viper.Viper) error {
+	o.DSN = v.GetString("dsn")
 	return nil
 }

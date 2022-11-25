@@ -13,11 +13,11 @@ import (
 type Task struct {
 	gorm.Model
 
-	OwnerName string `json:"owner"`
-	Owner     User   `gorm:"foreignKey:Username;references:OwnerName"`
+	OwnerId uint `json:"owner"`
+	Owner   User `gorm:"foreignKey:ID;references:OwnerId"`
 
-	AssigneeName string `json:"assignee"`
-	Assignee     User   `gorm:"foreignKey:Username;references:AssigneeName"`
+	AssigneeId uint `json:"assignee"`
+	Assignee   User `gorm:"foreignKey:ID;references:AssigneeId"`
 
 	Description string       `json:"desc"`
 	Due         *time.Time   `json:"due,omitempty"`

@@ -11,49 +11,68 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"github.com/go-logr/logr"
 )
 
 // NewHandler sets up all of the routes for the site
-func NewHandler(db *gorm.DB) http.Handler {
+func NewHandler(db *gorm.DB, log logr.Logger) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
+	userController := NewUserController(db, log.WithName("userController"))
+	taskController := NewTaskController(db, log.WithName("taskController"))
+	commentController := NewCommentController(db, log.WithName("commentController"))
+	annotationController := NewAnnotationController(db, log.WithName("annotationController"))
+	policyController := NewPolicyController(db, log.WithName("policyController"))
+
 	r.Route("/users", func(r chi.Router) {
-		r.Post("/", CreateUser(db))
+		r.Post("/", userController.Create)
 		r.Route("/{userid}", func(r chi.Router) {
-			r.Get("/", GetUser(db))
-			r.Put("/", UpdateUser(db))
-			r.Delete("/", DeleteUser(db))
+			r.Get("/", userController.Get)
+			r.Put("/", userController.Update)
+			r.Delete("/", userController.Delete)
+
+			r.Route("/shares", func(r chi.Router) {
+				r.Get("/with", policyController.ListSharedWith)
+				r.Get("/from", policyController.ListSharedFrom)
+				r.Post("/", policyController.Create)
+				r.Route("/{delegateid}", func(r chi.Router) {
+					r.Get("/", policyController.Get)
+					r.Put("/", taskController.Update)
+					r.Delete("/", taskController.Delete)
+				})
+			})
 
 			r.Route("/tasks", func(r chi.Router) {
-				r.Get("/", ListTasks(db))
-				r.Post("/", CreateTask(db))
+				r.Get("/", taskController.List)
+				r.Post("/", taskController.Create)
 				r.Route("/{taskid}", func(r chi.Router) {
-					r.Get("/", GetTask(db))
-					r.Put("/", UpdateTask(db))
-					r.Delete("/", DeleteTask(db))
+					r.Get("/", taskController.Get)
+					r.Put("/", taskController.Update)
+					r.Delete("/", taskController.Delete)
 
 					r.Route("/comments", func(r chi.Router) {
-						r.Get("/", ListComments(db))
-						r.Post("/", CreateComment(db))
+						r.Get("/", commentController.List)
+						r.Post("/", commentController.Create)
 						r.Route("/{commentid}", func(r chi.Router) {
-							r.Get("/", GetComment(db))
-							r.Put("/", UpdateComment(db))
-							r.Delete("/", DeleteComment(db))
+							r.Get("/", commentController.Get)
+							r.Put("/", commentController.Update)
+							r.Delete("/", commentController.Delete)
 						})
 					})
 
 					r.Route("/annotations", func(r chi.Router) {
-						r.Get("/", ListAnnotations(db))
-						r.Post("/", CreateAnnotation(db))
+						r.Get("/", annotationController.List)
+						r.Post("/", annotationController.Create)
 						r.Route("/{annotationid}", func(r chi.Router) {
-							r.Get("/", GetAnnotation(db))
-							r.Put("/", UpdateAnnotation(db))
-							r.Delete("/", DeleteAnnotation(db))
+							r.Get("/", annotationController.Get)
+							r.Put("/", annotationController.Update)
+							r.Delete("/", annotationController.Delete)
 						})
 					})
 				})

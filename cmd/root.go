@@ -10,6 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bombsimon/logrusr/v3"
+	"github.com/sirupsen/logrus"
+
 	"github.com/csams/doit/cmd/migrate"
 	"github.com/csams/doit/cmd/serve"
 )
@@ -21,6 +24,8 @@ var (
 			initConfig()
 		},
 	}
+
+	rootLog = logrusr.New(logrus.New())
 )
 
 func init() {
@@ -30,8 +35,8 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.config/doit/config.yaml)")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
-	rootCmd.AddCommand(serve.NewCommand())
-	rootCmd.AddCommand(migrate.NewCommand())
+	rootCmd.AddCommand(serve.NewCommand(rootLog.WithName("serve")))
+	rootCmd.AddCommand(migrate.NewCommand(rootLog.WithName("migrate")))
 }
 
 func initConfig() {
@@ -66,6 +71,7 @@ func initConfig() {
 func Execute() {
 	ctx := context.Background()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		rootLog.V(0).Info("Unhandled", "error", err)
 		os.Exit(1)
 	}
 }

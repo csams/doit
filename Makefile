@@ -6,7 +6,13 @@ default: build ;
 
 .PHONY: build
 build: require-go ## build the thing
+	go mod tidy
 	go build -o ./bin/doit main.go
+
+.PHONY: test
+test: WHAT ?= ./...
+test: build require-go
+	go test -v $(WHAT)
 
 .PHONY: docs require-asciidoc
 docs: ## build the docs

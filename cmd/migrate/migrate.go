@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/csams/doit/pkg/storage"
 )
 
-func NewCommand() *cobra.Command {
+func NewCommand(log logr.Logger) *cobra.Command {
 	options := storage.NewOptions()
 	cmd := &cobra.Command{
 		Use:   "migrate",

@@ -1,0 +1,13 @@
+= Routes
+
+    /users/{userid}
+    /users/{userid}/shares
+    /users/{userid}/shares/{delegateid}
+    /users/{userid}/shares/with
+    /users/{userid}/shares/from
+
+    /users/{userid}/tasks/{taskid}
+    /users/{userid}/tasks/{taskid}/comments
+    /users/{userid}/tasks/{taskid}/comments/{commentid}
+    /users/{userid}/tasks/{taskid}/annotations
+    /users/{userid}/tasks/{taskid}/annotations/{annotationid}
