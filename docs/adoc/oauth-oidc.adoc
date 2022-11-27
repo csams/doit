@@ -1,0 +1,177 @@
+:youtube-video: https://youtu.be/996OiexHze0
+= OAuth2.0 and Open ID Connect (OIDC)
+:toc:
+
+Notes from a great youtube video {youtube-video}[OAuth 2.0 and OpenID Connect (in plain English)]
+
+== History (pre-2010)
+
+Developers were responsible for creating authentication and authorization
+experiences from scratch for every site, and they were almost always in the
+form of a username and password. Security Assertion Markup Language (SAML) was
+developed to enable Single Sign On (SSO) using the same set of credentials
+across multiple sites, but the spec is complicated and obscure, and it didn't
+handle emerging use cases.
+
+=== Simple Login or "Forms Authentication"
+
+1. User enters creds into a web form
+2. Creds are sent to a backend service
+3. Server validates creds and creates a session cookie so the user
+doesn't have to log in repeatedly
+4. Session cookie stored in the user's browser
+
+==== Downsides
+
+As the server author, you're responsible for *security*, *compliance*, and *maintenance*.
+
+=== Security Assertion Markup Language (SAML)
+
+Access multiple systems with one set of credentials. Known as Single Sign On (SSO).
+
+==== Downsides
+
+Difficult to work with as a developer. SAML is even more obscure than OAuth and
+has a dense specification.
+
+=== Mobile App login
+
+How to stay logged in after closing the app?
+
+==== Downsides
+
+No good solution
+
+=== Delegated Authorization
+
+Applications need authorization to perform specific actions against resources
+using their own identities.
+
+==== Downsides
+
+No good solution
+
+== OAuth 2.0
+
+OAuth 2.0 was designed to handle the Delegated Authorization problem. It
+enables granular delegated authorization without unneeded handling of primary
+credentials.
+
+E.g. Yelp wants to see the contact list from a user's email account to send
+automated invites. OAuth 2.0 allows a user to grant them that specific ability
+without giving them the user name and password to the email account.
+
+=== Terminology
+
+Resource Owner:: You or me. The user that owns the resource the client wants to
+access.
+
+Client:: The application that wants to access the resource.
+
+Authorization server:: The system that the user uses to grant the client access
+to the resource.
+
+Resource server:: The API or system that holds the resource the client wants to
+access.
+
+Authorization grant:: The thing that proves the user's consent to the client to
+access a resource.
+
+Redirect URI:: When the user accepts or denies a client access, the
+authorization server sends them back to the client using the _redirect URI_.
+
+Access token:: An access token is a key the client uses to access the resource in the resource
+server.
+
+Scope:: The list of resources and actions on them that the authorization server
+understands. The client requests a subset of scopes when initiating the OAuth
+flow.
+
+Consent:: The list of requested *scopes* is presented to the *resource owner*
+during authentication so the *resource owner* knows exactly which permissions
+the *client* is requesting.
+
+Back channel (highly secure):: Encrypted server to server communication channel. The *resource owner* is not involved.
+
+Front channel (less secure):: A communication channel that involves the *resource owner* - browsers, CLIs, etc.
+
+=== Authorization Code Flow (back channel and front channel) [[auth-code-flow]]
+
+Recommended for any web application with a server backend.
+
+. The *client* sends the *resource owner* to the *authorization server* along
+with a *redirectURI*, response type, and the list of requested *scopes*. (Front channel)
+. The *resource owner* logs in and grants access to the *client* for the requested *scopes*. (Front channel)
+. The *authorization server* redirects the *resource owner* back to the
+*client* and sends along an *authorization code*. (Front channel)
+. The *client* exchanges the *authorization code* for an *access token*. This
+exchange includes a secret key given to the *client* by the *authorization server*.
+(Back channel)
+. The *client* uses the *access token* to access the *resource*. (Back channel)
+
+IMPORTANT: Why doesn't the *authorization server* send the *access token*
+directly back the *client*? Because the exchange of the *authorization code*
+for the *access token* includes the use of a secret key known only to the
+*client* and the *authorization server*. We don't want the secret key to ever
+be in custody of anything else. This also prevents malicious users that may
+have access to the browser from getting the code.
+
+=== Authorization code flow with PKCE (back channel and front channel) [[auth-code-with-pkce-flow]]
+
+Recommended for native mobile apps.
+
+PKCE (Proof Code for Key Exchange)
+
+=== Implicit Flow (front channel only) [[implicit-flow]]
+
+Recommended for pure javascript single page apps (SPA) with simple API backend.
+
+The authorization server returns the access token immediately instead of return
+an authorization code that must be exchanged for an access token. This is
+typical of SPA javascript apps that don't have backend servers; i.e. there is
+no back channel.
+
+=== Resource owner password credentials (back channel only) [[resource-owner-password-flow]]
+
+This flow often is used to make older applications work correctly. The *resource*
+*owner's* credentials are sent directly to the *authorization server* in exchange
+for an *access token*.
+
+=== Client credentials (back channel only) [[client-credentials-flow]]
+
+Recommended for microservices and APIs
+
+This flow often is used for machine to machine authorization.
+
+== OAuth 2.0 and OpenID Connect (OIDC)
+
+OAuth 2.0 is completely about delegated authorization, but companies started
+(ab)using it for authentication. OIDC is an extension of OAuth 2.0 that
+standardizes the authentication use case.
+
+Basically everything is the same except in addition to an *access token*, the
+*client* can ask for an *ID token*.
+
+=== Problems with OAuth 2.0 for *authentication*
+
+- No standard way to get the user's information
+- Every implementation is a little different
+- No common set of scopes
+
+=== What OpenID Connect Adds
+
+- ID token (in the form of a JSON Web Token aka JWT)
+- Standard `UserInfo` endpoint for getting more user information
+- Standard set of scopes
+- Standardized implementation
+
+=== OIDC authorization code flow
+
+This flow is identical to the OAuth 2.0 <<auth-code-flow, authorization code flow>> except that the
+scope `openid` is included when the *client* is sent to the *authorization
+server*, and the *authorization code* is exchanged for an *access token* _and_
+an *ID token* (which is a JSON Web Token or JWT).
+
+The *ID token* contains _some_ information about the *resource owner*. If more
+information is required, the *access token* must be used to access the standard
+`UserInfo` route of the *authorization server*.
