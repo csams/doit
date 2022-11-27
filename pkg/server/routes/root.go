@@ -20,8 +20,8 @@ func NewHandler(db *gorm.DB, log logr.Logger) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
+	r.Use(middleware.Recoverer)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
 	userController := NewUserController(db, log.WithName("userController"))
@@ -33,6 +33,7 @@ func NewHandler(db *gorm.DB, log logr.Logger) http.Handler {
 	r.Route("/users", func(r chi.Router) {
 		r.Post("/", userController.Create)
 		r.Route("/{userid}", func(r chi.Router) {
+			r.Use(userController.UserCtx)
 			r.Get("/", userController.Get)
 			r.Put("/", userController.Update)
 			r.Delete("/", userController.Delete)
