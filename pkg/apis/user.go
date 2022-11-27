@@ -1,11 +1,17 @@
 package apis
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
 type User struct {
-	gorm.Model
+	ID        uint `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+
 	Username string `json:"username" gorm:"unique"`
 	Name     string `json:"name" gorm:"not null"`
 

@@ -11,7 +11,10 @@ import (
 
 // Task is some unit of work to do
 type Task struct {
-	gorm.Model
+	ID        uint `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	OwnerId uint `json:"owner"`
 	Owner   User `gorm:"foreignKey:ID;references:OwnerId"`
