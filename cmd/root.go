@@ -13,6 +13,7 @@ import (
 	"github.com/bombsimon/logrusr/v3"
 	"github.com/sirupsen/logrus"
 
+	"github.com/csams/doit/cmd/login"
 	"github.com/csams/doit/cmd/migrate"
 	"github.com/csams/doit/cmd/serve"
 )
@@ -37,6 +38,7 @@ func init() {
 
 	rootCmd.AddCommand(serve.NewCommand(rootLog.WithName("serve")))
 	rootCmd.AddCommand(migrate.NewCommand(rootLog.WithName("migrate")))
+	rootCmd.AddCommand(login.NewCommand(rootLog.WithName("login")))
 }
 
 func initConfig() {
@@ -65,6 +67,9 @@ func initConfig() {
 		fmt.Println("Can't read config:", err)
 		os.Exit(1)
 	}
+
+	// TODO: move default storage config path closer to the storage stuff that
+	// uses it.
 	viper.SetDefault("storage.config.path", path.Join(cfgDir, "data.json"))
 }
 
