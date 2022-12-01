@@ -13,7 +13,7 @@ import (
 type Options struct {
 	ClientId               string
 	TokenFile              string
-	CallbackAddr           string
+	LocalAddr              string
 	RedirectURL            string
 	AuthorizationServerURL string
 	InsecureClient         bool
@@ -26,7 +26,7 @@ func NewOptions() *Options {
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ClientId, "client-id", "todo-app", "the clientId issued by the authorization server that represents the application")
 	fs.StringVarP(&o.TokenFile, "token-file", "t", "$HOME/.config/doit/oidc-token", "the path to the file that holds the id-token")
-	fs.StringVar(&o.CallbackAddr, "callback-addr", "localhost:8080", "the callback address")
+	fs.StringVar(&o.LocalAddr, "local-addr", "localhost:8080", "the local address that starts the OAuth2 flow")
 	fs.StringVar(&o.RedirectURL, "redirect-url", "http://localhost:8080/callback", "the callback URL")
 	fs.StringVar(&o.AuthorizationServerURL, "auth-server-url", "https://localhost/realms/todoapp", "the URL to the authorization server")
 	fs.BoolVarP(&o.InsecureClient, "insecure-client", "k", false, "validate authorization server certs?")

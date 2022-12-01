@@ -112,7 +112,7 @@ func NewOIDCFlow(c CompletedConfig) (*OIDCFlow, error) {
 		ClientContext:   ctx,
 		Provider:        provider,
 		Verifier:        provider.Verifier(oidcConfig),
-		Server:          &http.Server{Addr: c.CallbackAddr},
+		Server:          &http.Server{Addr: c.LocalAddr},
 		OAuth2Config:    oauthConfig,
 	}, nil
 
@@ -187,6 +187,8 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 	mux := http.NewServeMux()
 	l.Server.Handler = mux
 
+	// we'll open the browser here to set the initial state and nonce
+	// before redirecting over to the SSO server for login
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		state, err := randString(16)
 		if err != nil {
@@ -206,6 +208,10 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 		http.Redirect(w, r, l.OAuth2Config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.AccessTypeOffline), http.StatusFound)
 	})
 
+	// The SSO server will redirect the browser back here. On successful login, the redirect
+	// will contain the state and nonce we sent to it in the original redirect above along with
+	// an auth code that can be exchanged on the back channel for an access token that comes with
+	// an OIDC identity token.
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		defer close(stop)
 		state, err := r.Cookie("state")
@@ -274,7 +280,7 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 		errChan <- l.Server.ListenAndServe()
 	}()
 
-	if err := browser.OpenURL("http://localhost:8080"); err != nil {
+	if err := browser.OpenURL("http://" + l.LocalAddr); err != nil {
 		l.Server.Close()
 		return "", err
 	}
