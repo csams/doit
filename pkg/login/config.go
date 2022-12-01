@@ -1,4 +1,4 @@
-package cli
+package login
 
 type Config struct {
 	*Options

@@ -6,11 +6,11 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 
-	"github.com/csams/doit/pkg/cli"
 	"github.com/csams/doit/pkg/errors"
+	"github.com/csams/doit/pkg/login"
 )
 
-func NewCommand(log logr.Logger, options *cli.Options) *cobra.Command {
+func NewCommand(log logr.Logger, options *login.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login using OAuth2.0/OIDC",
@@ -23,8 +23,8 @@ func NewCommand(log logr.Logger, options *cli.Options) *cobra.Command {
 				return errors.NewAggregate(errs)
 			}
 
-			config := cli.NewConfig(options).Complete()
-			flow, err := cli.NewOIDCFlow(config)
+			config := login.NewConfig(options).Complete()
+			flow, err := login.NewOIDCFlow(config)
 			if err != nil {
 				return err
 			}
