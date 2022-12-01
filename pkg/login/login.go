@@ -39,7 +39,7 @@ func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value strin
 	http.SetCookie(w, c)
 }
 
-func CreateClient(insecure bool) *http.Client {
+func createClient(insecure bool) *http.Client {
 	if insecure {
 		// like http.DefaultTransport but with InsecureSkipVerify: true
 		transport := &http.Transport{
@@ -64,6 +64,7 @@ func CreateClient(insecure bool) *http.Client {
 	return http.DefaultClient
 }
 
+// OIDCFlow holds the data necessary to complete an OAuth2 auth code flow
 type OIDCFlow struct {
 	CompletedConfig
 
@@ -86,9 +87,11 @@ type OIDCFlow struct {
 "frontchannel_logout_supported": true,
 "jwks_uri": "https://localhost/realms/todoapp/protocol/openid-connect/certs",
 */
+
+// NewOIDCFlow creates a new OIDCFlow that can be used to
 func NewOIDCFlow(c CompletedConfig) (*OIDCFlow, error) {
 	ctx := context.Background()
-	client := CreateClient(c.InsecureClient)
+	client := createClient(c.InsecureClient)
 	ctx = oidc.ClientContext(ctx, client)
 
 	oidcConfig := &oidc.Config{ClientID: c.ClientId}
@@ -118,24 +121,24 @@ func NewOIDCFlow(c CompletedConfig) (*OIDCFlow, error) {
 
 }
 
-type TokenWrapper struct {
+type tokenWrapper struct {
 	*oauth2.Token
 	IdToken string `json:"id_token,omitempty"`
 }
 
-func (l *OIDCFlow) SaveToken(tok *oauth2.Token) error {
+func (l *OIDCFlow) saveToken(tok *oauth2.Token) error {
 	rawIDToken := tok.Extra("id_token").(string)
-	data, err := json.Marshal(&TokenWrapper{Token: tok, IdToken: rawIDToken})
+	data, err := json.Marshal(&tokenWrapper{Token: tok, IdToken: rawIDToken})
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(l.TokenFile, data, 0600)
 }
 
-func (l *OIDCFlow) GetSavedToken() (string, error) {
+func (l *OIDCFlow) getSavedToken() (string, error) {
 	rawToken, err := os.ReadFile(l.TokenFile)
 	if err == nil {
-		var tok TokenWrapper
+		var tok tokenWrapper
 		err = json.Unmarshal(rawToken, &tok)
 		if err != nil {
 			return "", err
@@ -149,7 +152,7 @@ func (l *OIDCFlow) GetSavedToken() (string, error) {
 		// if it's not still valid, this should automatically refresh
 		if newTok, err := l.OAuth2Config.TokenSource(l.ClientContext, tok.Token).Token(); err == nil {
 			if newTok.AccessToken != tok.AccessToken {
-				if err = l.SaveToken(newTok); err != nil {
+				if err = l.saveToken(newTok); err != nil {
 					return "", err
 				}
 			}
@@ -171,7 +174,7 @@ func (l *OIDCFlow) GetSavedToken() (string, error) {
 }
 
 func (l *OIDCFlow) GetIdToken() (string, error) {
-	tok, err := l.GetSavedToken()
+	tok, err := l.getSavedToken()
 	if err == nil {
 		return tok, nil
 	}
@@ -264,7 +267,7 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 			return
 		}
 
-		if err = l.SaveToken(oauth2Token); err != nil {
+		if err = l.saveToken(oauth2Token); err != nil {
 			idErr = err
 			http.Error(w, "Failed to save oauth token: "+err.Error(), http.StatusInternalServerError)
 			return

@@ -91,6 +91,7 @@ func initConfig() {
 	viper.Unmarshal(&options)
 }
 
+// Execute runs the root command
 func Execute() {
 	ctx := context.Background()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
