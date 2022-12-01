@@ -281,6 +281,7 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 
 	select {
 	case err := <-errChan:
+		l.Server.Close()
 		return "", err
 	case <-sigChannel:
 		return "", l.Server.Close()
