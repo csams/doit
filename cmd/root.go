@@ -16,6 +16,10 @@ import (
 	"github.com/csams/doit/cmd/login"
 	"github.com/csams/doit/cmd/migrate"
 	"github.com/csams/doit/cmd/serve"
+
+	"github.com/csams/doit/pkg/cli"
+	"github.com/csams/doit/pkg/server"
+	"github.com/csams/doit/pkg/storage"
 )
 
 var (
@@ -27,6 +31,16 @@ var (
 	}
 
 	rootLog = logrusr.New(logrus.New())
+
+	options = struct {
+		Storage *storage.Options `mapstructure:"storage"`
+		Login   *cli.Options     `mapstructure:"login"`
+		Server  *server.Options  `mapstructure:"serve"`
+	}{
+		storage.NewOptions(),
+		cli.NewOptions(),
+		server.NewOptions(),
+	}
 )
 
 func init() {
@@ -36,9 +50,17 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.config/doit/config.yaml)")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
-	rootCmd.AddCommand(serve.NewCommand(rootLog.WithName("serve")))
-	rootCmd.AddCommand(migrate.NewCommand(rootLog.WithName("migrate")))
-	rootCmd.AddCommand(login.NewCommand(rootLog.WithName("login")))
+	serveCmd := serve.NewCommand(rootLog.WithName("serve"), options.Storage, options.Server)
+	rootCmd.AddCommand(serveCmd)
+	viper.BindPFlags(serveCmd.Flags())
+
+	migrateCmd := migrate.NewCommand(rootLog.WithName("migrate"), options.Storage)
+	rootCmd.AddCommand(migrateCmd)
+	viper.BindPFlags(migrateCmd.Flags())
+
+	loginCmd := login.NewCommand(rootLog.WithName("login"), options.Login)
+	rootCmd.AddCommand(loginCmd)
+	viper.BindPFlags(loginCmd.Flags())
 }
 
 func initConfig() {
@@ -54,10 +76,8 @@ func initConfig() {
 
 	cfgDir := path.Join(home, ".config", "doit")
 	if cfgFile != "" {
-		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Search config in home directory with name ".cobra" (without extension).
 		viper.AddConfigPath(cfgDir)
 		viper.SetConfigName("config")
 		viper.SetConfigType("yaml")
@@ -68,9 +88,7 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	// TODO: move default storage config path closer to the storage stuff that
-	// uses it.
-	viper.SetDefault("storage.config.path", path.Join(cfgDir, "data.json"))
+	viper.Unmarshal(&options)
 }
 
 func Execute() {

@@ -7,16 +7,15 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 )
 
 type Options struct {
-	ClientId               string
-	TokenFile              string
-	LocalAddr              string
-	RedirectURL            string
-	AuthorizationServerURL string
-	InsecureClient         bool
+	ClientId               string `mapstructure:"client-id"`
+	TokenFile              string `mapstructure:"token-file"`
+	LocalAddr              string `mapstructure:"local-addr"`
+	RedirectURL            string `mapstructure:"redirect-url"`
+	AuthorizationServerURL string `mapstructure:"auth-server-url"`
+	InsecureClient         bool   `mapstructure:"insecure-client"`
 }
 
 func NewOptions() *Options {
@@ -24,19 +23,19 @@ func NewOptions() *Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.ClientId, "client-id", "todo-app", "the clientId issued by the authorization server that represents the application")
-	fs.StringVarP(&o.TokenFile, "token-file", "t", "$HOME/.config/doit/oidc-token", "the path to the file that holds the id-token")
-	fs.StringVar(&o.LocalAddr, "local-addr", "localhost:8080", "the local address that starts the OAuth2 flow")
-	fs.StringVar(&o.RedirectURL, "redirect-url", "http://localhost:8080/callback", "the callback URL")
-	fs.StringVar(&o.AuthorizationServerURL, "auth-server-url", "https://localhost/realms/todoapp", "the URL to the authorization server")
-	fs.BoolVarP(&o.InsecureClient, "insecure-client", "k", false, "validate authorization server certs?")
+	fs.String("login.client-id", "todo-app", "the clientId issued by the authorization server that represents the application")
+	fs.StringP("login.token-file", "t", "$HOME/.config/doit/oidc-token", "the path to the file that holds the id-token")
+	fs.String("login.local-addr", "localhost:8080", "the local address that starts the OAuth2 flow")
+	fs.String("login.redirect-url", "http://localhost:8080/callback", "the callback URL")
+	fs.String("login.auth-server-url", "https://localhost/realms/todoapp", "the URL to the authorization server")
+	fs.BoolP("login.insecure-client", "k", false, "validate authorization server certs?")
 }
 
 func (o *Options) Validate() []error {
 	return nil
 }
 
-func (o *Options) Complete(v *viper.Viper) error {
+func (o *Options) Complete() error {
 	if o.TokenFile == "" {
 		home, err := homedir.Dir()
 		if err != nil {

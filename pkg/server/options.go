@@ -2,14 +2,13 @@ package server
 
 import (
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 )
 
 type Options struct {
-	Address string
+	Address string `mapstructure:"addr"`
 
-	CertFile string
-	KeyFile  string
+	CertFile string `mapstructure:"cert-file"`
+	KeyFile  string `mapstructure:"key-file"`
 
 	SecureServing bool
 }
@@ -19,16 +18,16 @@ func NewOptions() *Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP(&o.Address, "addr", "a", "0.0.0.0:8080", "the host and port on which to listen")
-	fs.StringVarP(&o.CertFile, "cert-file", "c", "", "the file containing the server's serving certificate")
-	fs.StringVarP(&o.KeyFile, "key-file", "k", "", "the file containing the server's private key for the serving cert")
+	fs.String("serve.addr", "0.0.0.0:8080", "the host and port on which to listen")
+	fs.String("serve.cert-file", "", "the file containing the server's serving certificate")
+	fs.String("serve.key-file", "", "the file containing the server's private key for the serving cert")
 }
 
 func (o *Options) Validate() []error {
 	return nil
 }
 
-func (o *Options) Complete(v *viper.Viper) error {
+func (o *Options) Complete() error {
 	o.SecureServing = o.CertFile != "" && o.KeyFile != ""
 	return nil
 }

@@ -5,19 +5,17 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/csams/doit/pkg/cli"
 	"github.com/csams/doit/pkg/errors"
 )
 
-func NewCommand(log logr.Logger) *cobra.Command {
-	options := cli.NewOptions()
+func NewCommand(log logr.Logger, options *cli.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login using OAuth2.0/OIDC",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := options.Complete(viper.GetViper()); err != nil {
+			if err := options.Complete(); err != nil {
 				return err
 			}
 
