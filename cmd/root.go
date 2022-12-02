@@ -13,11 +13,12 @@ import (
 	"github.com/bombsimon/logrusr/v3"
 	"github.com/sirupsen/logrus"
 
-	logincmd "github.com/csams/doit/cmd/login"
+	"github.com/csams/doit/cmd/login"
 	"github.com/csams/doit/cmd/migrate"
 	"github.com/csams/doit/cmd/serve"
 
-	"github.com/csams/doit/pkg/login"
+	"github.com/csams/doit/cmd/cli"
+	"github.com/csams/doit/pkg/auth"
 	"github.com/csams/doit/pkg/server"
 	"github.com/csams/doit/pkg/storage"
 )
@@ -34,11 +35,11 @@ var (
 
 	options = struct {
 		Storage *storage.Options `mapstructure:"storage"`
-		Login   *login.Options   `mapstructure:"login"`
+		Client  *auth.Options    `mapstructure:"client"`
 		Server  *server.Options  `mapstructure:"serve"`
 	}{
 		storage.NewOptions(),
-		login.NewOptions(),
+		auth.NewOptions(),
 		server.NewOptions(),
 	}
 )
@@ -58,9 +59,13 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 	viper.BindPFlags(migrateCmd.Flags())
 
-	loginCmd := logincmd.NewCommand(rootLog.WithName("login"), options.Login)
+	loginCmd := login.NewCommand(rootLog.WithName("login"), options.Client)
 	rootCmd.AddCommand(loginCmd)
 	viper.BindPFlags(loginCmd.Flags())
+
+	cliCmd := cli.NewCommand(rootLog.WithName("client"), options.Client)
+	rootCmd.AddCommand(cliCmd)
+	viper.BindPFlags(cliCmd.Flags())
 }
 
 func initConfig() {

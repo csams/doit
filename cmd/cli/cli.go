@@ -1,19 +1,18 @@
-package login
+package cli
 
 import (
-	"fmt"
+	"github.com/csams/doit/pkg/auth"
+	"github.com/csams/doit/pkg/cli"
+	"github.com/csams/doit/pkg/errors"
 
 	"github.com/go-logr/logr"
+	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
-
-	"github.com/csams/doit/pkg/auth"
-	"github.com/csams/doit/pkg/errors"
 )
 
 func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Login using OAuth2.0/OIDC",
+		Use: "cli",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := options.Complete(); err != nil {
 				return err
@@ -28,12 +27,18 @@ func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tok, err := flow.GetIdToken()
-			fmt.Println(tok)
-			return err
+
+			app := tview.NewApplication()
+
+			prim, err := cli.GetApplication(log, app, flow)
+			if err != nil {
+				return err
+			}
+
+			app.SetRoot(prim, true)
+			return app.Run()
 		},
 	}
 
-	options.AddFlags(cmd.Flags(), "client")
 	return cmd
 }

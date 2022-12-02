@@ -1,44 +1,57 @@
 = CLI
 
+
 == CRUD (like) actions
 
 === new 
+
 Adds a new task to the list. A new task is assigned to its owner.
 
 === modify
+
 Generic update function that can change several task attributes
 
 === delete
+
 Marks a task as deleted
 
 === purge
+
 Permanently removes deleted tasks
 
 === start
+
 start working on a task
 
 === stop
+
 stop working on a task
 
 === done
+
 mark a task as done
 
 
 == Sharing
 
 === share-with
+
 shares the task list with another user
 
 === unshare-with
+
 removes one, many, or all users' access to the list
 
 === assign
+
 Assigns a task to a user with whom the task list has been shared
 
 === private
+
 mark a task as private so it can't be seen or modified even if the list is shared
 
 === shareble
+
 mark a task as shareable. this is the opposite of private. it is the default.
 
 
@@ -46,7 +59,7 @@ mark a task as shareable. this is the opposite of private. it is the default.
 
 === list
 See all assigned tasks across all lists. You can assign tasks to users who do
-not have edit access to your list. In that case, they have edit access to only
+not have edit access to your list. In that case, they have edit access only to 
 their assigned tasks.
 
 === who

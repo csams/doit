@@ -1,4 +1,4 @@
-package login
+package auth
 
 import (
 	"crypto/rand"
@@ -64,8 +64,8 @@ func createClient(insecure bool) *http.Client {
 	return http.DefaultClient
 }
 
-// OIDCFlow holds the data necessary to complete an OAuth2 auth code flow
-type OIDCFlow struct {
+// TokenProvider holds the data necessary to complete an OAuth2 auth code flow
+type TokenProvider struct {
 	CompletedConfig
 
 	Server *http.Server
@@ -88,8 +88,8 @@ type OIDCFlow struct {
 "jwks_uri": "https://localhost/realms/todoapp/protocol/openid-connect/certs",
 */
 
-// NewOIDCFlow creates a new OIDCFlow that can be used to
-func NewOIDCFlow(c CompletedConfig) (*OIDCFlow, error) {
+// NewTokenProvider creates a new OIDCFlow that can be used to
+func NewTokenProvider(c CompletedConfig) (*TokenProvider, error) {
 	ctx := context.Background()
 	client := createClient(c.InsecureClient)
 	ctx = oidc.ClientContext(ctx, client)
@@ -108,9 +108,7 @@ func NewOIDCFlow(c CompletedConfig) (*OIDCFlow, error) {
 		Scopes:      []string{oidc.ScopeOpenID, "profile", "email"},
 	}
 
-	oauthConfig.Client(ctx, nil)
-
-	return &OIDCFlow{
+	return &TokenProvider{
 		CompletedConfig: c,
 		ClientContext:   ctx,
 		Provider:        provider,
@@ -126,7 +124,7 @@ type tokenWrapper struct {
 	IdToken string `json:"id_token,omitempty"`
 }
 
-func (l *OIDCFlow) saveToken(tok *oauth2.Token) error {
+func (l *TokenProvider) saveToken(tok *oauth2.Token) error {
 	rawIDToken := tok.Extra("id_token").(string)
 	data, err := json.Marshal(&tokenWrapper{Token: tok, IdToken: rawIDToken})
 	if err != nil {
@@ -135,7 +133,7 @@ func (l *OIDCFlow) saveToken(tok *oauth2.Token) error {
 	return os.WriteFile(l.TokenFile, data, 0600)
 }
 
-func (l *OIDCFlow) getSavedToken() (string, error) {
+func (l *TokenProvider) getSavedToken() (string, error) {
 	rawToken, err := os.ReadFile(l.TokenFile)
 	if err == nil {
 		var tok tokenWrapper
@@ -145,7 +143,7 @@ func (l *OIDCFlow) getSavedToken() (string, error) {
 		}
 
 		// if the saved token is still valid, just use it
-		if _, err := l.Verifier.Verify(l.ClientContext, tok.IdToken); err == nil {
+		if _, err := l.Verify(tok.IdToken); err == nil {
 			return tok.IdToken, err
 		}
 
@@ -159,7 +157,7 @@ func (l *OIDCFlow) getSavedToken() (string, error) {
 
 			// check again just to make sure
 			rawIDToken := newTok.Extra("id_token").(string)
-			if _, err := l.Verifier.Verify(l.ClientContext, rawIDToken); err != nil {
+			if _, err := l.Verify(rawIDToken); err != nil {
 				return "", err
 			}
 
@@ -173,7 +171,11 @@ func (l *OIDCFlow) getSavedToken() (string, error) {
 	}
 }
 
-func (l *OIDCFlow) GetIdToken() (string, error) {
+func (l *TokenProvider) Verify(token string) (*oidc.IDToken, error) {
+	return l.Verifier.Verify(l.ClientContext, token)
+}
+
+func (l *TokenProvider) GetIdToken() (string, error) {
 	tok, err := l.getSavedToken()
 	if err == nil {
 		return tok, nil
@@ -246,7 +248,7 @@ func (l *OIDCFlow) GetIdToken() (string, error) {
 			return
 		}
 
-		idToken, err := l.Verifier.Verify(l.ClientContext, rawIDToken)
+		idToken, err := l.Verify(rawIDToken)
 		if err != nil {
 			idErr = err
 			http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)

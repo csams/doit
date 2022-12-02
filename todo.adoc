@@ -1,3 +1,7 @@
-1. Refactor routing to better segment the handlers.
+. Build auth middleware
 
-2. Add task list sharing to the route handlers.
+. Design CLI screens
+
+. Refactor routing to better segment the handlers.
+
+. Add task list sharing to the route handlers.

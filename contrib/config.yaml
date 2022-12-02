@@ -1,5 +1,8 @@
 serve:
-  addr: 192.168.0.16:8080
+  addr: localhost:8080
+  auth:
+    insecure-client: true
+    client-id: todo-app
 
-login:
+client:
   insecure-client: true
