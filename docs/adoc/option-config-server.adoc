@@ -2,25 +2,25 @@
 
 == Options
 
-An `Options` object may be nested in another `Options` object for a different part
-of the system. It contains the raw fields necessary to establish system
+An `Options` object may be nested in another `Options` object for a different
+part of the system. It contains the raw fields necessary to establish system
 configuration. Its fields are bound to command line flag parsing (cobra) and
 config file options (viper).
 
-An `Options` object has a no argument constructor, a `Complete` method to fill in
-default values and fields that are derived from directly input options, and a
-`Validate` method that ensures the Completed `Options` are ready for use. Some
-`Options` provide an `ApplyTo` method that accepts a `Config` object appropriate for
-the subsystem the `Options` object represents.
+An `Options` object has a no argument constructor, a `Complete` method to fill
+in default values and fields that are derived from directly input options, and
+a `Validate` method that ensures the Completed `Options` are ready for use.
+Some `Options` provide an `ApplyTo` method that accepts a `Config` object
+appropriate for the subsystem the `Options` object represents.
 
-`Complete`, `Validate`, and `ApplyTo` are responsible for calling the corresponding
-methods on any child `Options` objects.
+`Complete`, `Validate`, and `ApplyTo` are responsible for calling the
+corresponding methods on any child `Options` objects.
 
 == Config
 
-`Config` objects are like `Options` in the way they're nested to match hierarchical
-subsystem structure. They provide a constructor that either takes no arguments
-or accepts a corresponding `Options` object.
+`Config` objects are like `Options` in the way they're nested to match
+hierarchical subsystem structure. They provide a constructor that either takes
+no arguments or accepts a corresponding `Options` object.
 
 If the constructor has no arguments, the Config object starts with defaults,
 and it is the caller's responsibility to use `Options.ApplyTo` to populate the
@@ -29,8 +29,8 @@ corresponding nested configs.
 
 If the constructor accepts an options object, it will call constructors of
 child configs with the appropriate child options if they accept them, or it
-will create default child configs and the corresponding `Options.ApplyTo` on
-them.
+will create default child configs and call the corresponding `Options.ApplyTo`
+on them.
 
 A `Config` object has a `Complete` method that returns a `CompletedConfig`
 object. This `CompletedConfig` is required by the `NewServer` method described
@@ -49,4 +49,4 @@ instance of `preparedServer`, which itself embedds a `*Server`.
 
  1. Create a `Server` with `NewServer`
  2. Get a reference to a `preparedServer` through `Server.PrepareRun`
- 3. Cal `preparedServer.Run`
+ 3. Call `preparedServer.Run`
