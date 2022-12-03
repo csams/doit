@@ -101,6 +101,7 @@ func (c *TaskController) Create(w http.ResponseWriter, r *http.Request) {
 
 	task.OwnerId = u.ID
 	task.AssigneeId = u.ID
+	task.State = apis.Open
 
 	if err = c.DB.Create(task).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
