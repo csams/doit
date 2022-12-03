@@ -1,7 +1,4 @@
-. Build auth middleware
-
+. Update form functions to save the tasks
 . Design CLI screens
-
 . Refactor routing to better segment the handlers.
-
 . Add task list sharing to the route handlers.

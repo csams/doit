@@ -43,6 +43,11 @@ var (
 		apis.Done:       4,
 		apis.Abandoned:  5,
 	}
+	stateMap = map[apis.State]int{
+		apis.State(""): 0,
+		apis.Open:      1,
+		apis.Closed:    2,
+	}
 )
 
 func getStatusIndex(s apis.Status) int {
@@ -53,7 +58,15 @@ func getStatusIndex(s apis.Status) int {
 	return i
 }
 
-func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth.TokenProvider) (tview.Primitive, error) {
+func getStateIndex(s apis.State) int {
+	i, found := stateMap[s]
+	if !found {
+		return 0
+	}
+	return i
+}
+
+func CreateApplication(log logr.Logger, app *tview.Application, tokenProvider *auth.TokenProvider) (tview.Primitive, error) {
 	flex := tview.NewFlex().SetFullScreen(true)
 	table := tview.NewTable().
 		SetFixed(1, 1).
@@ -99,8 +112,10 @@ func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth
 			form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
 
 			form.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+			form.SetButtonTextColor(tcell.ColorWheat)
 
 			form.AddTextArea("Description", t.Description, 0, 0, 0, nil)
+			form.AddDropDown("State", []string{"undefined", "open", "closed"}, getStateIndex(t.State), nil)
 			form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), nil)
 			form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
 			form.AddCheckbox("Private", t.Private, nil)
@@ -127,7 +142,8 @@ func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth
 			form.SetButtonTextColor(tcell.ColorWheat)
 
 			form.AddTextArea("Description", "", 0, 0, 0, nil)
-			form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, 0, nil)
+			form.AddDropDown("State", []string{"undefined", "open", "closed"}, 1, nil)
+			form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, 1, nil)
 			form.AddInputField("Priority", "0", 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
 			form.AddCheckbox("Private", true, nil)
 			form.AddButton("Cancel", func() { flex.RemoveItem(form); app.SetFocus(table) })
@@ -200,21 +216,22 @@ func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth
 
 	tasks := user.AssignedTasks
 
+	fmtString := "2006-01-02 15:04:05 MST"
 	for r, task := range tasks {
 		r = r + 1
 		id := fmt.Sprintf("%d", task.ID)
 		priority := fmt.Sprintf("%d", task.Priority)
-		createdAt := task.CreatedAt.Format("2006-01-02 15:04:05 MST")
+		createdAt := task.CreatedAt.Format(fmtString)
 
-		var due []byte
+		var due string
 		if task.Due != nil {
-			due, _ = task.Due.MarshalText()
+			due = task.Due.Format(fmtString)
 		}
 
 		table.SetCell(r, 0, tview.NewTableCell(id).SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft).SetReference(task))
 		table.SetCell(r, 1, tview.NewTableCell(string(createdAt)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 2, tview.NewTableCell(task.Description).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetExpansion(4))
-		table.SetCell(r, 3, tview.NewTableCell(string(due)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		table.SetCell(r, 3, tview.NewTableCell(due).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 4, tview.NewTableCell(priority).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 5, tview.NewTableCell(string(task.State)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 6, tview.NewTableCell(string(task.Status)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))

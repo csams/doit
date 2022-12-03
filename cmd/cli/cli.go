@@ -30,7 +30,7 @@ func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
 
 			app := tview.NewApplication()
 
-			prim, err := cli.GetApplication(log, app, flow)
+			prim, err := cli.CreateApplication(log, app, flow)
 			if err != nil {
 				return err
 			}
