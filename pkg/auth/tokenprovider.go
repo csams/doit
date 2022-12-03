@@ -39,7 +39,7 @@ func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value strin
 	http.SetCookie(w, c)
 }
 
-func createClient(insecure bool) *http.Client {
+func CreateClient(insecure bool) *http.Client {
 	if insecure {
 		// like http.DefaultTransport but with InsecureSkipVerify: true
 		transport := &http.Transport{
@@ -91,7 +91,7 @@ type TokenProvider struct {
 // NewTokenProvider creates a new OIDCFlow that can be used to
 func NewTokenProvider(c CompletedConfig) (*TokenProvider, error) {
 	ctx := context.Background()
-	client := createClient(c.InsecureClient)
+	client := CreateClient(c.InsecureClient)
 	ctx = oidc.ClientContext(ctx, client)
 
 	oidcConfig := &oidc.Config{ClientID: c.ClientId}
