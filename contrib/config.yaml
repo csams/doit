@@ -1,6 +1,7 @@
 server:
   addr: localhost:8080
   auth:
+    server-url: https://localhost/realms/todoapp
     insecure-client: true
     client-id: todo-app
 

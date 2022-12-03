@@ -14,7 +14,7 @@ type Options struct {
 	TokenFile              string `mapstructure:"token-file"`
 	LocalAddr              string `mapstructure:"local-addr"`
 	RedirectURL            string `mapstructure:"redirect-url"`
-	AuthorizationServerURL string `mapstructure:"auth-server-url"`
+	AuthorizationServerURL string `mapstructure:"server-url"`
 	InsecureClient         bool   `mapstructure:"insecure-client"`
 }
 
@@ -30,7 +30,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet, prefix string) {
 	fs.StringP(prefix+"token-file", "t", "$HOME/.config/doit/oidc-token", "the path to the file that holds the id-token")
 	fs.String(prefix+"local-addr", "localhost:8080", "the local address that starts the OAuth2 flow")
 	fs.String(prefix+"redirect-url", "http://localhost:8080/callback", "the callback URL")
-	fs.String(prefix+"auth-server-url", "https://localhost/realms/todoapp", "the URL to the authorization server")
+	fs.String(prefix+"server-url", "https://localhost/realms/todoapp", "the URL to the authorization server")
 	fs.BoolP(prefix+"insecure-client", "k", false, "validate authorization server certs?")
 }
 

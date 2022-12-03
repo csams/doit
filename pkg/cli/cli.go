@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strconv"
 
 	"encoding/json"
 	"io"
@@ -33,20 +34,110 @@ import (
 */
 
 var (
-	privateMap = map[bool]string{true: "true", false: "false"}
+	privateMap = map[bool]string{true: "✓", false: "✗"}
+	statusMap  = map[apis.Status]int{
+		apis.Status(""): 0,
+		apis.Backlog:    1,
+		apis.Todo:       2,
+		apis.Doing:      3,
+		apis.Done:       4,
+		apis.Abandoned:  5,
+	}
 )
+
+func getStatusIndex(s apis.Status) int {
+	i, found := statusMap[s]
+	if !found {
+		return 0
+	}
+	return i
+}
 
 func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth.TokenProvider) (tview.Primitive, error) {
 	flex := tview.NewFlex().SetFullScreen(true)
 	table := tview.NewTable().
 		SetFixed(1, 1).
 		SetSelectable(true, false)
-
 	table.SetBorder(true)
 	table.SetSeparator(tview.Borders.Vertical)
 
 	flex.AddItem(table, 0, 1, true)
+
+	quitModal := tview.NewModal()
+	quitModal.SetTitle("Quit?")
+	quitModal.SetText("Do you want to quit?")
+	quitModal.SetBackgroundColor(tcell.ColorDarkBlue)
+	quitModal.SetTextColor(tcell.ColorWheat)
+	quitModal.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+	quitModal.SetButtonTextColor(tcell.ColorWheat)
+
+	quitModal.AddButtons([]string{"No", "Yes"})
+
+	quitModal.SetDoneFunc(func(i int, l string) {
+		switch l {
+		case "Yes":
+			app.Stop()
+		case "No":
+			app.SetRoot(flex, true)
+			app.SetFocus(table)
+		}
+	})
+
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			app.SetRoot(quitModal, false)
+			app.SetFocus(quitModal)
+		case tcell.KeyEnter:
+			r, _ := table.GetSelection()
+			t := table.GetCell(r, 0).GetReference().(apis.Task)
+
+			form := tview.NewForm()
+			form.SetTitle("Edit Task").SetTitleAlign(tview.AlignLeft)
+			form.SetBorder(true)
+			form.SetFieldTextColor(tcell.ColorWheat)
+			form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
+
+			form.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+
+			form.AddTextArea("Description", t.Description, 0, 0, 0, nil)
+			form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), nil)
+			form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
+			form.AddCheckbox("Private", t.Private, nil)
+			form.AddButton("Cancel", func() { flex.RemoveItem(form); app.SetFocus(table) })
+			form.AddButton("Save", func() { flex.RemoveItem(form); app.SetFocus(table) })
+			form.SetCancelFunc(func() { flex.RemoveItem(form); app.SetFocus(table) })
+
+			flex.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
+			app.SetFocus(form)
+		}
+
+		switch event.Rune() {
+		case 'Q', 'q':
+			app.SetRoot(quitModal, false)
+			app.SetFocus(quitModal)
+		case 'n':
+			form := tview.NewForm()
+			form.SetTitle("Create Task").SetTitleAlign(tview.AlignLeft)
+			form.SetBorder(true)
+			form.SetFieldTextColor(tcell.ColorWheat)
+			form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
+
+			form.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+			form.SetButtonTextColor(tcell.ColorWheat)
+
+			form.AddTextArea("Description", "", 0, 0, 0, nil)
+			form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, 0, nil)
+			form.AddInputField("Priority", "0", 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
+			form.AddCheckbox("Private", true, nil)
+			form.AddButton("Cancel", func() { flex.RemoveItem(form); app.SetFocus(table) })
+			form.AddButton("Save", func() { flex.RemoveItem(form); app.SetFocus(table) })
+			form.SetCancelFunc(func() { flex.RemoveItem(form); app.SetFocus(table) })
+
+			flex.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
+			app.SetFocus(form)
+		}
+
 		return event
 	})
 
@@ -89,14 +180,14 @@ func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth
 	table.SetTitle("Tasks for " + user.Name)
 
 	headers := []string{
-		"id",
-		"created_at",
-		"description",
-		"due",
-		"priority",
-		"state",
-		"status",
-		"private",
+		"Id",
+		"Created",
+		"Description",
+		"Due",
+		"Priority",
+		"State",
+		"Status",
+		"Private",
 	}
 
 	for c, h := range headers {
@@ -113,7 +204,7 @@ func GetApplication(log logr.Logger, app *tview.Application, tokenProvider *auth
 		r = r + 1
 		id := fmt.Sprintf("%d", task.ID)
 		priority := fmt.Sprintf("%d", task.Priority)
-		createdAt, _ := task.CreatedAt.MarshalText()
+		createdAt := task.CreatedAt.Format("2006-01-02 15:04:05 MST")
 
 		var due []byte
 		if task.Due != nil {
