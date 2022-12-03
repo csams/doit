@@ -18,13 +18,13 @@ type Options struct {
 func NewOptions() *Options {
 	return &Options{
 		Auth:          auth.NewOptions(),
-		Address:       "localhost:8080",
+		Address:       "localhost:9090",
 		SecureServing: false,
 	}
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.String("server.addr", "0.0.0.0:8080", "the host and port on which to listen")
+	fs.String("server.addr", "0.0.0.0:9090", "the host and port on which to listen")
 	fs.String("server.cert-file", "", "the file containing the server's serving certificate")
 	fs.String("server.key-file", "", "the file containing the server's private key for the serving cert")
 

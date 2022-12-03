@@ -158,7 +158,7 @@ func CreateApplication(log logr.Logger, app *tview.Application, tokenProvider *a
 	})
 
 	client := auth.CreateClient(true)
-	req, err := http.NewRequest("GET", "http://localhost:8080/me", nil)
+	req, err := http.NewRequest("GET", "http://localhost:9090/me", nil)
 	if err != nil {
 		return nil, err
 	}

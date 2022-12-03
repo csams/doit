@@ -1,5 +1,5 @@
 server:
-  addr: localhost:8080
+  addr: localhost:9090
   auth:
     server-url: https://localhost/realms/todoapp
     insecure-client: true
