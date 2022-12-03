@@ -30,9 +30,10 @@ func (s *Server) PrepareRun() preparedServer {
 }
 
 func (s preparedServer) Run() error {
-	if s.SecureServing {
-		return http.ListenAndServeTLS(s.Address, s.CertFile, s.KeyFile, s.Handler)
+	if s.Options.SecureServing {
+		return http.ListenAndServeTLS(s.Options.Address, s.Options.CertFile, s.Options.KeyFile, s.Handler)
 	}
-	s.Log.V(0).Info("Listening on", "address", s.Address)
-	return http.ListenAndServe(s.Address, s.Handler)
+
+	s.Log.V(0).Info("Listening on", "address", s.Options.Address)
+	return http.ListenAndServe(s.Options.Address, s.Handler)
 }

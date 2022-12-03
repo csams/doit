@@ -1,6 +1,7 @@
 package apis
 
 import (
+	"net/http"
 	"sort"
 	"time"
 
@@ -11,26 +12,30 @@ import (
 
 // Task is some unit of work to do
 type Task struct {
-	ID        uint `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	OwnerId uint `json:"owner"`
-	Owner   User `gorm:"foreignKey:ID;references:OwnerId"`
+	OwnerId uint  `json:"owner_id"`
+	Owner   *User `gorm:"foreignKey:ID;references:OwnerId" json:"-"`
 
-	AssigneeId uint `json:"assignee"`
-	Assignee   User `gorm:"foreignKey:ID;references:AssigneeId"`
+	AssigneeId uint  `json:"assignee_id"`
+	Assignee   *User `gorm:"foreignKey:ID;references:AssigneeId" json:"-"`
 
 	Description string       `json:"desc"`
-	Due         *time.Time   `json:"due,omitempty"`
-	Priority    Priority     `json:"priority,omitempty"`
-	Private     bool         `json:"private,omitempty"`
+	Due         *time.Time   `json:"due"`
+	Priority    Priority     `json:"priority"`
+	Private     bool         `json:"private"`
 	State       State        `json:"state"`
 	Status      Status       `json:"status"`
-	Comments    []Comment    `json:"comments,omitempty" gorm:"constraint:OnDelete:CASCADE"`
-	Annotations []Annotation `json:"annotations,omitempty" gorm:"constraint:OnDelete:CASCADE"`
+	Comments    []Comment    `json:"comments" gorm:"constraint:OnDelete:CASCADE"`
+	Annotations []Annotation `json:"annotations" gorm:"constraint:OnDelete:CASCADE"`
 	// Tags        *set.Set[string] `json:"tags,omitempty"`
+}
+
+func (t *Task) Bind(r *http.Request) error {
+	return nil
 }
 
 // Priority is how urgent the task is. 0 is lowest priority.

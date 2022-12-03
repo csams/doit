@@ -1,4 +1,4 @@
-serve:
+server:
   addr: localhost:8080
   auth:
     insecure-client: true

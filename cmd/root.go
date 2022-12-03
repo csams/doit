@@ -36,7 +36,7 @@ var (
 	options = struct {
 		Storage *storage.Options `mapstructure:"storage"`
 		Client  *auth.Options    `mapstructure:"client"`
-		Server  *server.Options  `mapstructure:"serve"`
+		Server  *server.Options  `mapstructure:"server"`
 	}{
 		storage.NewOptions(),
 		auth.NewOptions(),
@@ -51,7 +51,7 @@ func init() {
 	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.config/doit/config.yaml)")
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 
-	serveCmd := serve.NewCommand(rootLog.WithName("serve"), options.Storage, options.Server)
+	serveCmd := serve.NewCommand(rootLog.WithName("server"), options.Storage, options.Server)
 	rootCmd.AddCommand(serveCmd)
 	viper.BindPFlags(serveCmd.Flags())
 

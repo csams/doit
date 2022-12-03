@@ -7,13 +7,13 @@ import (
 )
 
 type User struct {
-	ID        uint `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Username string `json:"username" gorm:"unique"`
-	Name     string `json:"name" gorm:"not null"`
+	Username string `gorm:"unique" json:"username"`
+	Name     string `gorm:"not null" json:"name"`
 
 	OwnedTasks    []Task `gorm:"foreignKey:OwnerId;constraint:OnDelete:CASCADE"`
 	AssignedTasks []Task `gorm:"foreignKey:AssigneeId"`

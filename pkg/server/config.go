@@ -3,15 +3,16 @@ package server
 import "github.com/csams/doit/pkg/auth"
 
 type Config struct {
-	*Options
-	Auth *auth.Config
+	Options *Options
+	Auth    *auth.Config
 }
 
 type completedConfig struct {
-	*Options
-	Auth auth.CompletedConfig
+	Options *Options
+	Auth    auth.CompletedConfig
 }
 
+// CompletedConfig can be constructed only from Config.Complete
 type CompletedConfig struct {
 	*completedConfig
 }

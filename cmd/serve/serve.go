@@ -4,6 +4,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 
+	"github.com/csams/doit/pkg/auth"
 	"github.com/csams/doit/pkg/errors"
 	"github.com/csams/doit/pkg/server"
 	"github.com/csams/doit/pkg/server/routes"
@@ -39,11 +40,17 @@ func NewCommand(log logr.Logger, storageOptions *storage.Options, serverOptions 
 				return err
 			}
 
-			handler := routes.NewHandler(db, log.WithName("rootHandler"))
+			authProvider, err := auth.NewTokenProvider(serverConfig.Auth)
+			if err != nil {
+				return err
+			}
+
+			handler := routes.NewHandler(db, authProvider, log.WithName("rootHandler"))
 			server, err := server.New(serverConfig, handler, log.WithName("server"))
 			if err != nil {
 				return err
 			}
+
 			return server.PrepareRun().Run()
 		},
 	}
