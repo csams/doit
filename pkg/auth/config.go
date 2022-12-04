@@ -25,7 +25,7 @@ func NewConfig(o *Options) *Config {
 
 func (c *Config) Complete() CompletedConfig {
 	if c.Client == nil {
-		c.Client = CreateClient(c.InsecureClient)
+		c.Client = NewClient(c.InsecureClient)
 	}
 	return CompletedConfig{&completedConfig{
 		c,

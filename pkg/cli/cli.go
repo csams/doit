@@ -11,6 +11,7 @@ import (
 )
 
 /*
+Example Task:
 {
   "id": 3,
   "created_at": "2022-12-02T16:58:15.698228072-06:00",
@@ -48,29 +49,33 @@ func New(cfg CompletedConfig) (*CLI, error) {
 	table.SetBorder(true)
 	table.SetSeparator(tview.Borders.Vertical)
 
-	flex.AddItem(table, 0, 1, true) // (item, fixedSize, proportion, focus?)
+	flex.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyEsc:
 			newQuitModal(c.App, flex)
+			return nil
 		case tcell.KeyEnter:
 			r, _ := table.GetSelection()
 			t := table.GetCell(r, 0).GetReference().(apis.Task)
 
 			form := c.editTaskForm(&t)
 			c.App.SetFocus(form)
+			return nil
 		}
 
 		switch event.Rune() {
 		case 'Q', 'q':
 			newQuitModal(c.App, flex)
+			return nil
 		case 'n':
 			form := c.createTaskForm()
 			c.App.SetFocus(form)
+			return nil
 		}
 
-		return event
+		return event // returning the event means other handlers also see it
 	})
 
 	user, err := client.Get[apis.User](c.Client, "http://localhost:9090/me", c.Tokens)

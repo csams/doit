@@ -59,7 +59,7 @@ func (c *Config) Complete() (CompletedConfig, error) {
 	}
 
 	if c.Client == nil {
-		c.Client = auth.CreateClient(c.Options.InsecureClient)
+		c.Client = auth.NewClient(c.Options.InsecureClient)
 	}
 
 	return CompletedConfig{&completedConfig{

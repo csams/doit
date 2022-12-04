@@ -39,7 +39,7 @@ func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value strin
 	http.SetCookie(w, c)
 }
 
-func CreateClient(insecure bool) *http.Client {
+func NewClient(insecure bool) *http.Client {
 	if insecure {
 		// like http.DefaultTransport but with InsecureSkipVerify: true
 		transport := &http.Transport{
