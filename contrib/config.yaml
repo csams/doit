@@ -5,5 +5,13 @@ server:
     insecure-client: true
     client-id: todo-app
 
-client:
+login:
   insecure-client: true
+
+client:
+  addr: http://localhost:9090
+  insecure-client: true
+  auth:
+    server-url: https://localhost/realms/todoapp
+    insecure-client: true
+    client-id: todo-app

@@ -1,16 +1,14 @@
 package cli
 
 import (
-	"github.com/csams/doit/pkg/auth"
 	"github.com/csams/doit/pkg/cli"
 	"github.com/csams/doit/pkg/errors"
 
 	"github.com/go-logr/logr"
-	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
+func NewCommand(log logr.Logger, options *cli.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "cli",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -22,21 +20,18 @@ func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
 				return errors.NewAggregate(errs)
 			}
 
-			config := auth.NewConfig(options).Complete()
-			flow, err := auth.NewTokenProvider(config)
+			config, err := cli.NewConfig(options, log).Complete()
 			if err != nil {
 				return err
 			}
 
-			app := tview.NewApplication()
-
-			prim, err := cli.CreateApplication(log, app, flow)
+			c, err := cli.New(config)
 			if err != nil {
 				return err
 			}
 
-			app.SetRoot(prim, true)
-			return app.Run()
+			c.App.SetRoot(c.Flex, true)
+			return c.App.Run()
 		},
 	}
 

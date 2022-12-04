@@ -74,6 +74,7 @@ type TokenProvider struct {
 	Provider      *oidc.Provider
 	Verifier      *oidc.IDTokenVerifier
 	OAuth2Config  *oauth2.Config
+	CachedToken   *tokenWrapper
 }
 
 /*
@@ -91,8 +92,7 @@ type TokenProvider struct {
 // NewTokenProvider creates a new OIDCFlow that can be used to
 func NewTokenProvider(c CompletedConfig) (*TokenProvider, error) {
 	ctx := context.Background()
-	client := CreateClient(c.InsecureClient)
-	ctx = oidc.ClientContext(ctx, client)
+	ctx = oidc.ClientContext(ctx, c.Client)
 
 	oidcConfig := &oidc.Config{ClientID: c.ClientId}
 
@@ -126,22 +126,32 @@ type tokenWrapper struct {
 
 func (l *TokenProvider) saveToken(tok *oauth2.Token) error {
 	rawIDToken := tok.Extra("id_token").(string)
-	data, err := json.Marshal(&tokenWrapper{Token: tok, IdToken: rawIDToken})
+	tw := &tokenWrapper{Token: tok, IdToken: rawIDToken}
+	data, err := json.Marshal(tw)
 	if err != nil {
 		return err
 	}
+	l.CachedToken = tw
 	return os.WriteFile(l.TokenFile, data, 0600)
 }
 
 func (l *TokenProvider) getSavedToken() (string, error) {
-	rawToken, err := os.ReadFile(l.TokenFile)
-	if err == nil {
-		var tok tokenWrapper
-		err = json.Unmarshal(rawToken, &tok)
-		if err != nil {
-			return "", err
-		}
+	tok := l.CachedToken
+	var err error
 
+	if tok == nil {
+		data, err := os.ReadFile(l.TokenFile)
+		if err == nil {
+			var tmp tokenWrapper
+			err = json.Unmarshal(data, &tmp)
+			if err == nil {
+				l.CachedToken = &tmp
+				tok = &tmp
+			}
+		}
+	}
+
+	if err == nil {
 		// if the saved token is still valid, just use it
 		if _, err := l.Verify(tok.IdToken); err == nil {
 			return tok.IdToken, err

@@ -34,6 +34,6 @@ func NewCommand(log logr.Logger, options *auth.Options) *cobra.Command {
 		},
 	}
 
-	options.AddFlags(cmd.Flags(), "client")
+	options.AddFlags(cmd.Flags(), "login")
 	return cmd
 }
