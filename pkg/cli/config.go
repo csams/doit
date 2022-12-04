@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"net/http"
+	"strings"
 
 	"github.com/csams/doit/pkg/auth"
+	"github.com/csams/doit/pkg/cli/client"
 	"github.com/go-logr/logr"
 	"github.com/rivo/tview"
 )
@@ -24,8 +25,7 @@ type completedConfig struct {
 
 type Common struct {
 	App    *tview.Application
-	Client *http.Client
-	Tokens *auth.TokenProvider
+	Client client.Client
 	Log    logr.Logger
 }
 
@@ -51,16 +51,22 @@ func (c *Config) Complete() (CompletedConfig, error) {
 		c.App = tview.NewApplication()
 	}
 
-	if c.Tokens == nil {
+	if c.Client.Tokens == nil {
 		var err error
-		if c.Tokens, err = auth.NewTokenProvider(completeAuth); err != nil {
+		if c.Client.Tokens, err = auth.NewTokenProvider(completeAuth); err != nil {
 			return CompletedConfig{}, err
 		}
 	}
 
-	if c.Client == nil {
-		c.Client = auth.NewClient(c.Options.InsecureClient)
+	if c.Client.Http == nil {
+		c.Client.Http = auth.NewClient(c.Options.InsecureClient)
 	}
+
+	var baseUrl = c.Options.Address
+	if !strings.HasSuffix(c.Options.Address, "/") {
+		baseUrl = baseUrl + "/"
+	}
+	c.Client.BaseUrl = baseUrl
 
 	return CompletedConfig{&completedConfig{
 		Options: c.Options,

@@ -2,37 +2,58 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/csams/doit/pkg/auth"
 )
 
-func Get[M any](client *http.Client, url string, tokenProvider *auth.TokenProvider) (*M, error) {
-	req, err := http.NewRequest("GET", url, nil)
+type Client struct {
+	Http    *http.Client
+	Tokens  *auth.TokenProvider
+	BaseUrl string
+}
+
+func NewClient(h *http.Client, t *auth.TokenProvider, b string) Client {
+	return Client{
+		Http:    h,
+		Tokens:  t,
+		BaseUrl: b,
+	}
+}
+
+// Get is a generic http function for unmarshalling a request to json
+func Get[M any](client Client, url string) (*M, error) {
+	url = strings.TrimPrefix(url, "/")
+	req, err := http.NewRequest("GET", client.BaseUrl+url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: convert to configuration
+	// TODO: would setting agent and bearer go better in a round tripper?
 	req.Header.Set("User-Agent", "todo-app-client")
 
-	token, err := tokenProvider.GetIdToken()
+	token, err := client.Tokens.GetIdToken()
 	if err != nil {
 		return nil, err
 	}
 	authHeader := fmt.Sprintf("BEARER %s", token)
 	req.Header.Set("Authorization", authHeader)
 
-	resp, err := client.Do(req)
+	resp, err := client.Http.Do(req)
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.Body != nil {
-		defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, errors.New("Non 200 response: " + resp.Status)
 	}
 
 	data, err := io.ReadAll(resp.Body)

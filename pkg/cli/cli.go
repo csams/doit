@@ -78,7 +78,7 @@ func New(cfg CompletedConfig) (*CLI, error) {
 		return event // returning the event means other handlers also see it
 	})
 
-	user, err := client.Get[apis.User](c.Client, "http://localhost:9090/me", c.Tokens)
+	user, err := client.Get[apis.User](c.Client, "me")
 	if err != nil {
 		return nil, err
 	}
