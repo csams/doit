@@ -78,25 +78,20 @@ func New(cfg CompletedConfig) (*CLI, error) {
 		return event // returning the event means other handlers also see it
 	})
 
-	user, err := client.Get[apis.User](c.Client, "me")
+	me, err := client.Get[apis.User](c.Client, "me")
 	if err != nil {
 		return nil, err
 	}
 
-	c.Me = user
+	c.Me = me
 
-	table.SetTitle("Tasks for " + user.Name)
+	table.SetTitle("Tasks for " + me.Name)
+	fillTaskTable(table, me.AssignedTasks)
 
-	table_headers := []string{
-		"Id",
-		"Created",
-		"Description",
-		"Due",
-		"Priority",
-		"State",
-		"Status",
-		"Private",
-	}
+	return c, nil
+}
+
+func fillTaskTable(table *tview.Table, tasks []apis.Task) {
 	for c, h := range table_headers {
 		table.SetCell(0, c,
 			tview.NewTableCell(h).
@@ -104,8 +99,6 @@ func New(cfg CompletedConfig) (*CLI, error) {
 				SetSelectable(false).
 				SetAlign(tview.AlignLeft).SetExpansion(1))
 	}
-
-	tasks := user.AssignedTasks
 
 	fmtString := "2006-01-02 15:04:05 MST"
 	for r, task := range tasks {
@@ -129,7 +122,6 @@ func New(cfg CompletedConfig) (*CLI, error) {
 		table.SetCell(r, 7, tview.NewTableCell(privateMap[task.Private]).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 	}
 	table.Select(1, 1)
-	return c, nil
 }
 
 var (
@@ -146,6 +138,16 @@ var (
 		apis.State(""): 0,
 		apis.Open:      1,
 		apis.Closed:    2,
+	}
+	table_headers = []string{
+		"Id",
+		"Created",
+		"Description",
+		"Due",
+		"Priority",
+		"State",
+		"Status",
+		"Private",
 	}
 )
 
