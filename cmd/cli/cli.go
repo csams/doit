@@ -30,10 +30,12 @@ func NewCommand(log logr.Logger, options *cli.Options) *cobra.Command {
 				return err
 			}
 
-			c.App.SetRoot(c.Flex, true)
+			c.App.SetRoot(c.Root, true)
 			return c.App.Run()
 		},
 	}
+
+	options.AddFlags(cmd.Flags())
 
 	return cmd
 }

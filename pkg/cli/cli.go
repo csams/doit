@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/csams/doit/pkg/apis"
-	"github.com/csams/doit/pkg/cli/client"
+	generic "github.com/csams/doit/pkg/cli/client"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -31,67 +31,88 @@ Example Task:
 
 type CLI struct {
 	CompletedConfig
-	Flex *tview.Flex
+	Root *tview.Flex
 	Me   *apis.User
 }
 
 func New(cfg CompletedConfig) (*CLI, error) {
-	flex := tview.NewFlex().SetFullScreen(true)
-
 	c := &CLI{
 		CompletedConfig: cfg,
-		Flex:            flex,
+		Root:            tview.NewFlex(),
 	}
 
-	table := tview.NewTable().
-		SetFixed(1, 1).            // the first column and first row always visible even when scrolling
-		SetSelectable(true, false) // (rows?, cols?) - select entire rows not columns
-	table.SetBorder(true)
-	table.SetSeparator(tview.Borders.Vertical)
-
-	flex.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
-
-	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEsc:
-			newQuitModal(c.App, flex)
-			return nil
-		case tcell.KeyEnter:
-			r, _ := table.GetSelection()
-			t := table.GetCell(r, 0).GetReference().(apis.Task)
-
-			form := c.editTaskForm(&t)
-			c.App.SetFocus(form)
-			return nil
-		}
-
-		switch event.Rune() {
-		case 'Q', 'q':
-			newQuitModal(c.App, flex)
-			return nil
-		case 'n':
-			form := c.createTaskForm()
-			c.App.SetFocus(form)
-			return nil
-		}
-
-		return event // returning the event means other handlers also see it
-	})
-
-	me, err := client.Get[apis.User](c.Client, "me")
+	me, err := generic.Get[apis.User](c.Client, "me")
 	if err != nil {
 		return nil, err
 	}
 
 	c.Me = me
 
+	table := NewTaskTable(c, me.AssignedTasks)
 	table.SetTitle("Tasks for " + me.Name)
-	fillTaskTable(table, me.AssignedTasks)
+
+	c.Root.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
 
 	return c, nil
 }
 
-func fillTaskTable(table *tview.Table, tasks []apis.Task) {
+type TaskTable struct {
+	*tview.Table
+	CLI   *CLI
+	Tasks []apis.Task
+}
+
+func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
+	table := tview.NewTable().
+		SetFixed(1, 1).            // the first column and first row are visible even when scrolling
+		SetSelectable(true, false) // (rows?, cols?) - select entire rows not columns
+	table.SetBorder(true)
+	table.SetSeparator(tview.Borders.Vertical)
+
+	tt := &TaskTable{
+		CLI:   c,
+		Tasks: tasks,
+		Table: table,
+	}
+
+	table.SetSelectedFunc(func(row, col int) {
+		t := table.GetCell(row, 0).GetReference().(*apis.Task)
+
+		form := c.newEditTaskForm(tt, t)
+		c.App.SetFocus(form)
+	})
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			newQuitModal(c.App, c.Root)
+			return nil
+		}
+
+		switch event.Rune() {
+		case 'n':
+			form := c.newCreateTaskForm(tt)
+			c.App.SetFocus(form)
+			return nil
+		case 'q':
+			newQuitModal(c.App, c.Root)
+			return nil
+		case 'Q':
+			c.App.Stop()
+			return nil
+		}
+
+		return event // returning the event means other handlers also see it
+	})
+
+	tt.Update()
+	return tt
+}
+
+func (t *TaskTable) Update() {
+	table := t.Table
+	tasks := t.Tasks
+	curR, curC := table.GetSelection()
 	for c, h := range table_headers {
 		table.SetCell(0, c,
 			tview.NewTableCell(h).
@@ -101,7 +122,8 @@ func fillTaskTable(table *tview.Table, tasks []apis.Task) {
 	}
 
 	fmtString := "2006-01-02 15:04:05 MST"
-	for r, task := range tasks {
+	for r := range tasks {
+		task := &tasks[r]
 		r = r + 1
 		id := fmt.Sprintf("%d", task.ID)
 		priority := fmt.Sprintf("%d", task.Priority)
@@ -121,7 +143,148 @@ func fillTaskTable(table *tview.Table, tasks []apis.Task) {
 		table.SetCell(r, 6, tview.NewTableCell(string(task.Status)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 7, tview.NewTableCell(privateMap[task.Private]).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 	}
-	table.Select(1, 1)
+	if curR == 0 || curC == 0 {
+		curR = 1
+		curC = 1
+	}
+	table.Select(curR, curC)
+}
+
+func newQuitModal(app *tview.Application, oldRoot tview.Primitive) {
+	prevFocus := app.GetFocus()
+
+	quitModal := tview.NewModal()
+	quitModal.SetTitle("Quit?")
+	quitModal.SetText("Do you want to quit?")
+	quitModal.SetBackgroundColor(tcell.ColorDarkBlue)
+	quitModal.SetTextColor(tcell.ColorWheat)
+	quitModal.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+	quitModal.SetButtonTextColor(tcell.ColorWheat)
+
+	quitModal.AddButtons([]string{"Yes", "No"})
+
+	quitModal.SetDoneFunc(func(i int, l string) {
+		switch l {
+		case "Yes":
+			app.Stop()
+		case "No":
+			app.SetRoot(oldRoot, true)
+			app.SetFocus(prevFocus)
+		}
+	})
+	app.SetRoot(quitModal, false)
+	app.SetFocus(quitModal)
+}
+
+func newErrorModal(app *tview.Application, oldRoot tview.Primitive, msg string) {
+	modal := tview.NewModal()
+	modal.SetTitle("Error")
+	modal.SetText(msg)
+	modal.SetBackgroundColor(tcell.ColorDarkBlue)
+	modal.SetTextColor(tcell.ColorWheat)
+	modal.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+	modal.SetButtonTextColor(tcell.ColorWheat)
+
+	modal.AddButtons([]string{"OK"})
+
+	modal.SetDoneFunc(func(i int, l string) {
+		app.SetRoot(oldRoot, true)
+		app.SetFocus(oldRoot)
+	})
+
+	app.SetRoot(modal, false)
+	app.SetFocus(modal)
+}
+
+func styledForm() *tview.Form {
+	form := tview.NewForm()
+	form.SetTitleAlign(tview.AlignLeft)
+	form.SetBorder(true)
+	form.SetFieldTextColor(tcell.ColorWheat)
+	form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
+
+	form.SetButtonBackgroundColor(tcell.ColorDarkViolet)
+	form.SetButtonTextColor(tcell.ColorWheat)
+
+	return form
+}
+
+func (c *CLI) newCreateTaskForm(table *TaskTable) *tview.Form {
+	form := styledForm()
+	form.SetTitle("Create Task")
+
+	ensureInt := func(t string, l rune) bool { _, err := strconv.Atoi(t); return err == nil }
+
+	t := &apis.Task{
+		State:  apis.Open,
+		Status: apis.Backlog,
+	}
+
+	form.AddTextArea("Description", "", 0, 0, 0, func(text string) { t.Description = text })
+	form.AddDropDown("State", []string{"open", "closed"}, 0, func(option string, index int) { t.State = apis.State(option) })
+	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, 0, func(option string, index int) { t.Status = apis.Status(option) })
+	form.AddInputField("Priority", "0", 3, ensureInt, func(text string) {
+		p, _ := strconv.Atoi(text)
+		t.Priority = apis.Priority(p)
+	})
+	form.AddCheckbox("Private", false, func(checked bool) { t.Private = checked })
+
+	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
+	form.SetCancelFunc(cancel)
+	form.AddButton("Cancel", cancel)
+	form.AddButton("Save", func() {
+		userId := strconv.Itoa(int(c.Me.ID))
+		up, err := generic.Post(c.Client, "users/"+userId+"/tasks", t)
+		if err != nil {
+			newErrorModal(c.App, c.Root, "Error editing task: "+err.Error())
+			c.Root.RemoveItem(form)
+			return
+		}
+		table.Tasks = append(table.Tasks, *up)
+		c.Root.RemoveItem(form)
+		c.App.SetFocus(table.Table)
+		table.Update()
+	})
+
+	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
+	return form
+}
+
+func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
+	t := *orig // shallow copy for now...
+
+	form := styledForm()
+	form.SetTitle("Edit Task")
+
+	form.AddTextArea("Description", t.Description, 0, 0, 0, func(text string) { t.Description = text })
+	form.AddDropDown("State", []string{"undefined", "open", "closed"}, getStateIndex(t.State), func(option string, index int) { t.State = apis.State(option) })
+	form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), func(option string, index int) { t.Status = apis.Status(option) })
+	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, func(text string) {
+		p, _ := strconv.Atoi(text)
+		t.Priority = apis.Priority(p)
+	})
+	form.AddCheckbox("Private", t.Private, func(checked bool) { t.Private = checked })
+
+	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
+	form.SetCancelFunc(cancel)
+	form.AddButton("Cancel", cancel)
+	form.AddButton("Save", func() {
+		userId := strconv.Itoa(int(c.Me.ID))
+		taskId := strconv.Itoa(int(t.ID))
+		up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, &t)
+		if err != nil {
+			newErrorModal(c.App, c.Root, "Error editing task: "+err.Error())
+			c.Root.RemoveItem(form)
+			return
+		}
+		*orig = *up
+		c.Root.RemoveItem(form)
+		c.App.SetFocus(table.Table)
+		table.Update()
+	})
+
+	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
+	return form
 }
 
 var (
@@ -165,82 +328,4 @@ func getStateIndex(s apis.State) int {
 		return 0
 	}
 	return i
-}
-
-func newQuitModal(app *tview.Application, oldRoot tview.Primitive) {
-	prevFocus := app.GetFocus()
-
-	quitModal := tview.NewModal()
-	quitModal.SetTitle("Quit?")
-	quitModal.SetText("Do you want to quit?")
-	quitModal.SetBackgroundColor(tcell.ColorDarkBlue)
-	quitModal.SetTextColor(tcell.ColorWheat)
-	quitModal.SetButtonBackgroundColor(tcell.ColorDarkViolet)
-	quitModal.SetButtonTextColor(tcell.ColorWheat)
-
-	quitModal.AddButtons([]string{"Yes", "No"})
-
-	quitModal.SetDoneFunc(func(i int, l string) {
-		switch l {
-		case "Yes":
-			app.Stop()
-		case "No":
-			app.SetRoot(oldRoot, true)
-			app.SetFocus(prevFocus)
-		}
-	})
-	app.SetRoot(quitModal, false)
-	app.SetFocus(quitModal)
-}
-
-func styledForm() *tview.Form {
-	form := tview.NewForm()
-	form.SetTitleAlign(tview.AlignLeft)
-	form.SetBorder(true)
-	form.SetFieldTextColor(tcell.ColorWheat)
-	form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
-
-	form.SetButtonBackgroundColor(tcell.ColorDarkViolet)
-	form.SetButtonTextColor(tcell.ColorWheat)
-
-	return form
-}
-
-func (c *CLI) createTaskForm() *tview.Form {
-	oldFocus := c.App.GetFocus()
-	form := styledForm()
-	form.SetTitle("Create Task")
-
-	form.AddTextArea("Description", "", 0, 0, 0, nil)
-	form.AddDropDown("State", []string{"undefined", "open", "closed"}, 1, nil)
-	form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, 1, nil)
-	form.AddInputField("Priority", "0", 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
-	form.AddCheckbox("Private", true, nil)
-
-	form.AddButton("Cancel", func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-	form.AddButton("Save", func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-	form.SetCancelFunc(func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-
-	c.Flex.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
-	return form
-}
-
-func (c *CLI) editTaskForm(t *apis.Task) *tview.Form {
-	oldFocus := c.App.GetFocus()
-
-	form := styledForm()
-	form.SetTitle("Edit Task")
-
-	form.AddTextArea("Description", t.Description, 0, 0, 0, nil)
-	form.AddDropDown("State", []string{"undefined", "open", "closed"}, getStateIndex(t.State), nil)
-	form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), nil)
-	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, nil)
-	form.AddCheckbox("Private", t.Private, nil)
-
-	form.AddButton("Cancel", func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-	form.AddButton("Save", func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-	form.SetCancelFunc(func() { c.Flex.RemoveItem(form); c.App.SetFocus(oldFocus) })
-
-	c.Flex.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
-	return form
 }

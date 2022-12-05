@@ -97,6 +97,7 @@ func (c *TaskController) Create(w http.ResponseWriter, r *http.Request) {
 
 	if !apis.IsValidStatus(task.Status) {
 		http.Error(w, "task status is invalid", http.StatusBadRequest)
+		return
 	}
 
 	task.OwnerId = u.ID
@@ -105,6 +106,7 @@ func (c *TaskController) Create(w http.ResponseWriter, r *http.Request) {
 
 	if err = c.DB.Create(task).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -115,6 +117,7 @@ func (c *TaskController) Get(w http.ResponseWriter, r *http.Request) {
 	u, err := auth.UserFromContext(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	userId, err := strconv.Atoi(chi.URLParam(r, "userid"))
@@ -149,6 +152,7 @@ func (c *TaskController) Update(w http.ResponseWriter, r *http.Request) {
 	u, err := auth.UserFromContext(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	userId, err := strconv.Atoi(chi.URLParam(r, "userid"))
@@ -193,6 +197,7 @@ func (c *TaskController) Delete(w http.ResponseWriter, r *http.Request) {
 	u, err := auth.UserFromContext(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	userId, err := strconv.Atoi(chi.URLParam(r, "userid"))

@@ -58,7 +58,7 @@ const (
 	Abandoned Status = "abandoned"
 )
 
-var validStatuses = set.New(Todo, Todo, Doing, Done, Abandoned)
+var validStatuses = set.New(Backlog, Todo, Doing, Done, Abandoned)
 
 func IsValidStatus(s Status) bool {
 	return validStatuses.Has(s)
