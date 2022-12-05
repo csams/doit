@@ -38,6 +38,11 @@ below. `CompletedConfig` embeds a `*completedConfig` object that actually
 contains the complete configuration. This setup ensures `CompletedConfig` can
 be constructed only by calling `Config.Complete()`.
 
+The `Complete` function that produces a `CompletedConfig` is an opportunity to
+fill in fields of `Config` that don't yet have values. This allows for testing
+or developers that use the subsystem as a library to populate `Config` if
+needed, relying on `Complete` to provide default values.
+
 == Server
 
 A `Server` sometimes embeds a `CompletedConfig` object. Whether it does or
