@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/csams/doit/pkg/apis"
@@ -212,6 +213,8 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 				return
 			}
 			t.Due = &dueDate
+		} else {
+			t.Due = nil
 		}
 		userId := fmt.Sprintf("%d", c.Me.ID)
 		taskId := fmt.Sprintf("%d", t.ID)
@@ -324,7 +327,9 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			c.App.SetFocus(modal)
 			return nil
 		case 'n':
-			orig := &apis.Task{State: apis.Open, Status: apis.Backlog}
+			day := 24 * time.Hour
+			due := time.Now().Add(day).Round(day)
+			orig := &apis.Task{State: apis.Open, Status: apis.Backlog, Due: &due}
 			form := c.newCreateTaskForm(tt, orig)
 			c.App.SetFocus(form)
 			return nil
@@ -359,10 +364,6 @@ func (t *TaskTable) Update(clear bool) {
 	}
 
 	fmtString := "2006-01-02 15:04:05 MST"
-	sort.SliceStable(tasks, func(i, j int) bool {
-		return tasks[i].Priority > tasks[j].Priority
-	})
-
 	statusOrder := map[apis.Status]int{
 		apis.Doing:     0,
 		apis.Todo:      1,
@@ -370,6 +371,11 @@ func (t *TaskTable) Update(clear bool) {
 		apis.Done:      3,
 		apis.Abandoned: 4,
 	}
+
+	// primary sort by status and then secondary sorts by due date and priority
+	sort.SliceStable(tasks, func(i, j int) bool {
+		return tasks[i].Priority > tasks[j].Priority
+	})
 
 	sort.SliceStable(tasks, func(i, j int) bool {
 		if tasks[i].Due == nil {
