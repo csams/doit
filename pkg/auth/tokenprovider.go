@@ -153,8 +153,14 @@ func (l *TokenProvider) getSavedToken() (string, error) {
 
 	if err == nil {
 		// if the saved token is still valid, just use it
-		if _, err := l.Verify(tok.IdToken); err == nil {
-			return tok.IdToken, err
+		if tok != nil {
+			if _, err := l.Verify(tok.IdToken); err == nil {
+				return tok.IdToken, err
+			}
+		}
+
+		if tok == nil {
+			tok = &tokenWrapper{}
 		}
 
 		// if it's not still valid, this should automatically refresh
