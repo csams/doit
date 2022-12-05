@@ -123,7 +123,7 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 
 	var due string
 
-	fmtString := "2006-01-02 15:04:05"
+	fmtString := "2006-01-02 15:04:05 MST"
 	if orig.Due != nil {
 		due = orig.Due.Format(fmtString)
 	}
@@ -139,11 +139,9 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 	form.AddCheckbox("Private", false, func(checked bool) { orig.Private = checked })
 
 	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
-	form.SetCancelFunc(cancel)
-	form.AddButton("Cancel", cancel)
-	form.AddButton("Save", func() {
+	save := func() {
 		if due != "" {
-			dueDate, err := dateparse.ParseStrict(due)
+			dueDate, err := dateparse.ParseLocal(due)
 			if err != nil {
 				c.newErrorModal("Error parsing due date: " + err.Error())
 				c.Root.RemoveItem(form)
@@ -151,7 +149,7 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 			}
 			orig.Due = &dueDate
 		}
-		userId := strconv.Itoa(int(c.Me.ID))
+		userId := fmt.Sprintf("%d", c.Me.ID)
 		up, err := generic.Post(c.Client, "users/"+userId+"/tasks", orig)
 		if err != nil {
 			c.newErrorModal("Error creating task: " + err.Error())
@@ -162,7 +160,19 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 		c.Root.RemoveItem(form)
 		c.App.SetFocus(table.Table)
 		table.Update(false)
+	}
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlS {
+			save()
+			return nil
+		}
+		return event
 	})
+
+	form.SetCancelFunc(cancel)
+	form.AddButton("Cancel", cancel)
+	form.AddButton("Save", save)
 
 	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
 	return form
@@ -176,7 +186,7 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 
 	var due string
 
-	fmtString := "2006-01-02 15:04:05"
+	fmtString := "2006-01-02 15:04:05 MST"
 	if orig.Due != nil {
 		due = orig.Due.Format(fmtString)
 	}
@@ -192,11 +202,9 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 	form.AddCheckbox("Private", t.Private, func(checked bool) { t.Private = checked })
 
 	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
-	form.SetCancelFunc(cancel)
-	form.AddButton("Cancel", cancel)
-	form.AddButton("Save", func() {
+	save := func() {
 		if due != "" {
-			dueDate, err := dateparse.ParseStrict(due)
+			dueDate, err := dateparse.ParseLocal(due)
 			if err != nil {
 				c.newErrorModal("Error editing task: " + err.Error())
 				c.Root.RemoveItem(form)
@@ -204,8 +212,8 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 			}
 			t.Due = &dueDate
 		}
-		userId := strconv.Itoa(int(c.Me.ID))
-		taskId := strconv.Itoa(int(t.ID))
+		userId := fmt.Sprintf("%d", c.Me.ID)
+		taskId := fmt.Sprintf("%d", t.ID)
 		up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, &t)
 		if err != nil {
 			c.newErrorModal("Error editing task: " + err.Error())
@@ -216,7 +224,19 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 		c.Root.RemoveItem(form)
 		c.App.SetFocus(table.Table)
 		table.Update(false)
+	}
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlS {
+			save()
+			return nil
+		}
+		return event
 	})
+
+	form.SetCancelFunc(cancel)
+	form.AddButton("Cancel", cancel)
+	form.AddButton("Save", save)
 
 	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
 	return form
