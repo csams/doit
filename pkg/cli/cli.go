@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/araddon/dateparse"
@@ -358,6 +359,32 @@ func (t *TaskTable) Update(clear bool) {
 	}
 
 	fmtString := "2006-01-02 15:04:05 MST"
+	sort.SliceStable(tasks, func(i, j int) bool {
+		return tasks[i].Priority > tasks[j].Priority
+	})
+
+	statusOrder := map[apis.Status]int{
+		apis.Doing:     0,
+		apis.Todo:      1,
+		apis.Backlog:   2,
+		apis.Done:      3,
+		apis.Abandoned: 4,
+	}
+
+	sort.SliceStable(tasks, func(i, j int) bool {
+		if tasks[i].Due == nil {
+			return false
+		}
+		if tasks[j].Due == nil {
+			return true
+		}
+		return tasks[i].Due.After(*tasks[j].Due)
+	})
+
+	sort.SliceStable(tasks, func(i, j int) bool {
+		return statusOrder[tasks[i].Status] < statusOrder[tasks[j].Status]
+	})
+
 	for r := range tasks {
 		task := &tasks[r]
 		r = r + 1
