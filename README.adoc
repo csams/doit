@@ -25,7 +25,7 @@ A user logs into the application using an OAuth2 flow.
 A user manages tasks from the command line.
 
 == Components
-- CLI for user interaction (https://github.com/gdamore/tcell[tcell], might look at others)
+- CLI for user interaction (https://github.com/rivo/tview[tview], might look at others)
 - REST server (resource server) for tasks and sharing (https://github.com/go-chi/chi[go-chi])
 - SQL Database to store tasks (https://gorm.io[gorm])
 - OAuth2/OIDC authorization server (https://www.keycloak.org/[Keycloak])
