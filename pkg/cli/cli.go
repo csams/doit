@@ -117,89 +117,58 @@ func styledForm() *tview.Form {
 	return form
 }
 
-func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
-	form := styledForm()
-	form.SetTitle("Create Task")
-
-	ensureInt := func(t string, l rune) bool { _, err := strconv.Atoi(t); return err == nil }
-
-	var due string
-
-	fmtString := "2006-01-02 15:04:05 MST"
-	if orig.Due != nil {
-		due = orig.Due.Format(fmtString)
-	}
-
-	form.AddInputField("Description", orig.Description, 0, nil, func(text string) { orig.Description = text })
-	form.AddInputField("Due", due, 30, nil, func(text string) { due = text })
-	form.AddDropDown("State", []string{"open", "closed"}, getStateIndex(orig.State), func(option string, index int) { orig.State = apis.State(option) })
-	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(orig.Status), func(option string, index int) { orig.Status = apis.Status(option) })
-	form.AddInputField("Priority", "0", 3, ensureInt, func(text string) {
-		p, _ := strconv.Atoi(text)
-		orig.Priority = apis.Priority(p)
-	})
-	form.AddCheckbox("Private", false, func(checked bool) { orig.Private = checked })
-
-	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
-	save := func() {
-		if due != "" {
-			dueDate, err := dateparse.ParseLocal(due)
-			if err != nil {
-				c.newErrorModal("Error parsing due date: " + err.Error())
-				c.Root.RemoveItem(form)
-				return
-			} else {
-				orig.Due = &dueDate
-			}
-		} else {
-			orig.Due = nil
-		}
-		userId := fmt.Sprintf("%d", c.Me.ID)
-		up, err := generic.Post(c.Client, "users/"+userId+"/tasks", orig)
-		if err != nil {
-			c.newErrorModal("Error creating task: " + err.Error())
-			c.Root.RemoveItem(form)
-			return
-		}
-		table.Tasks = append(table.Tasks, *up)
-		c.Root.RemoveItem(form)
-		c.App.SetFocus(table.Table)
-		table.Update(false)
-	}
-
-	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyCtrlS {
-			save()
-			return nil
-		}
-		return event
-	})
-
-	form.SetCancelFunc(cancel)
-	form.AddButton("Cancel", cancel)
-	form.AddButton("Save", save)
-
-	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
-	return form
+type taskFormData struct {
+	Description string
+	Due         string
+	State       apis.State
+	Status      apis.Status
+	Priority    apis.Priority
+	Private     bool
 }
 
-func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
-	t := *orig // shallow copy for now...
+func formDataFromTask(task *apis.Task) *taskFormData {
+	fmtString := "2006-01-02 15:04:05 MST"
+	var due string
+	if task.Due != nil {
+		due = task.Due.Format(fmtString)
+	}
+	return &taskFormData{
+		Description: task.Description,
+		Due:         due,
+		State:       task.State,
+		Status:      task.Status,
+		Priority:    task.Priority,
+		Private:     task.Private,
+	}
+}
 
+func taskFromFormData(data *taskFormData) (*apis.Task, error) {
+	var due *time.Time
+	if data.Due != "" {
+		if dueDate, err := dateparse.ParseLocal(data.Due); err != nil {
+			return nil, err
+		} else {
+			due = &dueDate
+		}
+	}
+	return &apis.Task{
+		Description: data.Description,
+		Due:         due,
+		State:       data.State,
+		Status:      data.Status,
+		Priority:    data.Priority,
+		Private:     data.Private,
+	}, nil
+}
+
+func (c *CLI) newTaskForm(table *TaskTable, t *taskFormData, title string, save func() error) *tview.Form {
 	form := styledForm()
-	form.SetTitle("Edit Task")
+	form.SetTitle(title)
 
 	ensureInt := func(t string, l rune) bool { _, err := strconv.Atoi(t); return err == nil }
 
-	var due string
-
-	fmtString := "2006-01-02 15:04:05 MST"
-	if orig.Due != nil {
-		due = orig.Due.Format(fmtString)
-	}
-
 	form.AddInputField("Description", t.Description, 0, nil, func(text string) { t.Description = text })
-	form.AddInputField("Due", due, 30, nil, func(text string) { due = text })
+	form.AddInputField("Due", t.Due, 30, nil, func(text string) { t.Due = text })
 	form.AddDropDown("State", []string{"undefined", "open", "closed"}, getStateIndex(t.State), func(option string, index int) { t.State = apis.State(option) })
 	form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), func(option string, index int) { t.Status = apis.Status(option) })
 	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, ensureInt, func(text string) {
@@ -208,45 +177,35 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 	})
 	form.AddCheckbox("Private", t.Private, func(checked bool) { t.Private = checked })
 
-	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
-	save := func() {
-		if due != "" {
-			dueDate, err := dateparse.ParseLocal(due)
-			if err != nil {
-				c.newErrorModal("Error editing task: " + err.Error())
-				c.Root.RemoveItem(form)
-				return
-			} else {
-				t.Due = &dueDate
-			}
-		} else {
-			t.Due = nil
-		}
-		userId := fmt.Sprintf("%d", c.Me.ID)
-		taskId := fmt.Sprintf("%d", t.ID)
-		up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, &t)
-		if err != nil {
-			c.newErrorModal("Error editing task: " + err.Error())
-			c.Root.RemoveItem(form)
-			return
-		}
-		*orig = *up
-		c.Root.RemoveItem(form)
-		c.App.SetFocus(table.Table)
-		table.Update(false)
-	}
-
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyCtrlS {
-			save()
+			if err := save(); err != nil {
+				c.newErrorModal("Error saving task: " + err.Error())
+				c.Root.RemoveItem(form)
+			} else {
+				c.Root.RemoveItem(form)
+				c.App.SetFocus(table)
+				table.Update(false)
+			}
 			return nil
 		}
 		return event
 	})
 
+	cancel := func() { c.Root.RemoveItem(form); c.App.SetFocus(table.Table) }
 	form.SetCancelFunc(cancel)
 	form.AddButton("Cancel", cancel)
-	form.AddButton("Save", save)
+	form.AddButton("Save", func() {
+		if err := save(); err != nil {
+			c.newErrorModal("Error saving task: " + err.Error())
+			c.Root.RemoveItem(form)
+			return
+		} else {
+			c.Root.RemoveItem(form)
+			c.App.SetFocus(table)
+			table.Update(false)
+		}
+	})
 
 	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
 	return form
@@ -314,7 +273,22 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 	table.SetSelectedFunc(func(row, col int) {
 		t := table.GetCell(row, 0).GetReference().(*apis.Task)
 
-		form := c.newEditTaskForm(tt, t)
+		formData := formDataFromTask(t)
+		form := c.newTaskForm(tt, formData, "Edit task", func() error {
+			proposedTask, err := taskFromFormData(formData)
+			if err != nil {
+				return err
+			}
+			proposedTask.ID = t.ID
+			userId := fmt.Sprintf("%d", c.Me.ID)
+			taskId := fmt.Sprintf("%d", t.ID)
+			up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, proposedTask)
+			if err != nil {
+				return err
+			}
+			*t = *up
+			return nil
+		})
 		c.App.SetFocus(form)
 	})
 
@@ -336,7 +310,20 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			day := 24 * time.Hour
 			due := time.Now().Add(day).Round(day)
 			orig := &apis.Task{State: apis.Open, Status: apis.Backlog, Due: &due}
-			form := c.newCreateTaskForm(tt, orig)
+			formData := formDataFromTask(orig)
+			form := c.newTaskForm(tt, formData, "Create task", func() error {
+				t, err := taskFromFormData(formData)
+				if err != nil {
+					return err
+				}
+				userId := fmt.Sprintf("%d", c.Me.ID)
+				up, err := generic.Post(c.Client, "users/"+userId+"/tasks", t)
+				if err != nil {
+					return err
+				}
+				tt.Tasks = append(tt.Tasks, *up)
+				return nil
+			})
 			c.App.SetFocus(form)
 			return nil
 		case 'q':
@@ -390,7 +377,7 @@ func (t *TaskTable) Update(clear bool) {
 		if tasks[j].Due == nil {
 			return true
 		}
-		return tasks[i].Due.After(*tasks[j].Due)
+		return tasks[i].Due.Before(*tasks[j].Due)
 	})
 
 	sort.SliceStable(tasks, func(i, j int) bool {
