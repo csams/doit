@@ -45,7 +45,7 @@ func NewCommand(log logr.Logger, storageOptions *storage.Options, serverOptions 
 				return err
 			}
 
-			handler := routes.NewHandler(db, authProvider, log.WithName("rootHandler"))
+			handler := routes.NewHandler(db, authProvider, serverConfig.Auth.ClientId, log.WithName("rootHandler"))
 			server, err := server.New(serverConfig, handler, log.WithName("server"))
 			if err != nil {
 				return err

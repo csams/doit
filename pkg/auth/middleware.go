@@ -16,7 +16,7 @@ type userClaims struct {
 	Audience string `json:"aud"`
 }
 
-func Authenticator(db *gorm.DB, provider *TokenProvider) func(http.Handler) http.Handler {
+func Authenticator(db *gorm.DB, provider *TokenProvider, clientId string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// get the token from the request
@@ -49,7 +49,7 @@ func Authenticator(db *gorm.DB, provider *TokenProvider) func(http.Handler) http
 				return
 			}
 
-			if u.Audience != "todo-app" {
+			if u.Audience != clientId {
 				http.Error(w, "Invalid audience.", http.StatusBadRequest)
 				return
 			}

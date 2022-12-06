@@ -16,14 +16,14 @@ import (
 )
 
 // NewHandler sets up all of the routes for the site
-func NewHandler(db *gorm.DB, authProvider *auth.TokenProvider, log logr.Logger) http.Handler {
+func NewHandler(db *gorm.DB, authProvider *auth.TokenProvider, clientId string, log logr.Logger) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(middleware.URLFormat)
 	r.Use(middleware.Recoverer)
-	r.Use(auth.Authenticator(db, authProvider))
+	r.Use(auth.Authenticator(db, authProvider, clientId))
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
 	meController := NewMeController(db, log.WithName("meController"))
