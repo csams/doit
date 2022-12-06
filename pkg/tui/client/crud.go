@@ -71,12 +71,13 @@ func getOrDelete[M any](client Client, verb, url string) (*M, error) {
 	req.Header.Set("Authorization", authHeader)
 
 	resp, err := client.Http.Do(req)
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
