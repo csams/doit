@@ -57,7 +57,7 @@ func Authenticator(db *gorm.DB, provider *TokenProvider, clientId string) func(h
 			usr := &apis.User{
 				Username: u.Username,
 			}
-			if err := db.FirstOrCreate(usr).Error; err != nil {
+			if err := db.Where(*usr).FirstOrCreate(usr).Error; err != nil {
 				http.Error(w, "Failed to create user: "+err.Error(), http.StatusInternalServerError)
 				return
 			}

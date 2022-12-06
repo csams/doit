@@ -29,7 +29,7 @@ func (c *MeController) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := c.DB.Preload("AssignedTasks", "state = ?", apis.Open).First(u).Error; err != nil {
+	if err := c.DB.Preload("AssignedTasks", "state = ?", apis.Open).First(u, u.ID).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -1,12 +1,9 @@
 package auth
 
 import (
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -19,14 +16,6 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
-
-func randString(nByte int) (string, error) {
-	b := make([]byte, nByte)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
-}
 
 func setCallbackCookie(w http.ResponseWriter, r *http.Request, name, value string) {
 	c := &http.Cookie{
@@ -208,17 +197,27 @@ func (l *TokenProvider) GetIdToken() (string, error) {
 	mux := http.NewServeMux()
 	l.Server.Handler = mux
 
+	supportedPKCE, err := getSupportedPKCEMethods(l.Provider)
+	if err != nil {
+		return "", err
+	}
+
+	pkce, err := NewPKCEParams(supportedPKCE)
+	if err != nil {
+		return "", err
+	}
+
 	// we'll open the browser here to set the initial state and nonce
 	// before redirecting over to the SSO server for login
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		handleIndex := func() {
-			state, err := randString(16)
+			state, err := randString()
 			if err != nil {
 				http.Error(w, "Internal error", http.StatusInternalServerError)
 				return
 			}
 
-			nonce, err := randString(16)
+			nonce, err := randString()
 			if err != nil {
 				http.Error(w, "Internal error", http.StatusInternalServerError)
 				return
@@ -227,9 +226,24 @@ func (l *TokenProvider) GetIdToken() (string, error) {
 			setCallbackCookie(w, r, "state", state)
 			setCallbackCookie(w, r, "nonce", nonce)
 
-			http.Redirect(w, r, l.OAuth2Config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.AccessTypeOffline), http.StatusFound)
+			options := []oauth2.AuthCodeOption{
+				oidc.Nonce(nonce),
+				oauth2.AccessTypeOffline,
+			}
+
+			if !pkce.IsEmpty() {
+				chal := oauth2.SetAuthURLParam("code_challenge", pkce.Challenge)
+				meth := oauth2.SetAuthURLParam("code_challenge_method", pkce.Method)
+				options = append(options, chal, meth)
+			}
+
+			http.Redirect(w, r, l.OAuth2Config.AuthCodeURL(state, options...), http.StatusFound)
 		}
 
+		// The SSO server will redirect the browser back here. On successful login, the redirect
+		// will contain the state and nonce we sent to it in the original redirect above along with
+		// an auth code that can be exchanged on the back channel for an access token that comes with
+		// an OIDC identity token.
 		handleExchange := func() {
 			defer close(stop)
 			state, err := r.Cookie("state")
@@ -246,7 +260,13 @@ func (l *TokenProvider) GetIdToken() (string, error) {
 				return
 			}
 
-			oauth2Token, err := l.OAuth2Config.Exchange(l.ClientContext, r.URL.Query().Get("code"))
+			options := []oauth2.AuthCodeOption{}
+			if !pkce.IsEmpty() {
+				verifier := oauth2.SetAuthURLParam("code_verifier", pkce.Verifier)
+				options = append(options, verifier)
+			}
+
+			oauth2Token, err := l.OAuth2Config.Exchange(l.ClientContext, r.URL.Query().Get("code"), options...)
 			if err != nil {
 				idErr = err
 				http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
@@ -304,11 +324,6 @@ func (l *TokenProvider) GetIdToken() (string, error) {
 			http.NotFound(w, r)
 		}
 	})
-
-	// The SSO server will redirect the browser back here. On successful login, the redirect
-	// will contain the state and nonce we sent to it in the original redirect above along with
-	// an auth code that can be exchanged on the back channel for an access token that comes with
-	// an OIDC identity token.
 
 	errChan := make(chan error, 1)
 	go func() {
