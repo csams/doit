@@ -11,10 +11,8 @@ import (
 )
 
 type userClaims struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Username  string `json:"preferred_username"`
-	Audience  string `json:"aud"`
+	Username string `json:"preferred_username"`
+	Audience string `json:"aud"`
 }
 
 func Authenticator(db *gorm.DB, provider *TokenProvider, clientId string) func(http.Handler) http.Handler {
@@ -45,8 +43,8 @@ func Authenticator(db *gorm.DB, provider *TokenProvider, clientId string) func(h
 			// extract the claims we care about
 			u := &userClaims{}
 			tok.Claims(u)
-			if u.FirstName == "" || u.Username == "" {
-				http.Error(w, "Invalid claims. Require name and preferred_username", http.StatusBadRequest)
+			if u.Username == "" {
+				http.Error(w, "Invalid claims. Require preferred_username", http.StatusBadRequest)
 				return
 			}
 
@@ -57,7 +55,6 @@ func Authenticator(db *gorm.DB, provider *TokenProvider, clientId string) func(h
 
 			// fetch the user from the database or create them if they doesn't exist
 			usr := &apis.User{
-				Name:     strings.Trim(u.FirstName+" "+u.LastName, " "),
 				Username: u.Username,
 			}
 			if err := db.FirstOrCreate(usr).Error; err != nil {
