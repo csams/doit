@@ -41,16 +41,16 @@ func (t *Task) Bind(r *http.Request) error {
 // Priority is how urgent the task is. 0 is lowest priority.
 type Priority uint8
 
+// State is either open or closed
 type State string
+
+// Status is one of backlog, todo, doing, done, abandoned
+type Status string
 
 const (
 	Closed State = "closed"
 	Open   State = "open"
-)
 
-type Status string
-
-const (
 	Backlog   Status = "backlog"
 	Todo      Status = "todo"
 	Doing     Status = "doing"
@@ -58,7 +58,9 @@ const (
 	Abandoned Status = "abandoned"
 )
 
-var validStatuses = set.New(Backlog, Todo, Doing, Done, Abandoned)
+var (
+	validStatuses = set.New(Backlog, Todo, Doing, Done, Abandoned)
+)
 
 func IsValidStatus(s Status) bool {
 	return validStatuses.Has(s)

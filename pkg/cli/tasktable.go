@@ -32,23 +32,21 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 	}
 
 	table.SetSelectedFunc(func(row, col int) {
-		t := table.GetCell(row, 0).GetReference().(*apis.Task)
+		task := table.GetCell(row, 0).GetReference().(*apis.Task)
 
-		formData := formDataFromTask(t)
-		form := c.newTaskForm(tt, formData, "Edit task", func() error {
-			proposedTask := *t
+		form := c.newTaskForm(tt, task, "Edit task", func(formData *taskFormData) error {
+			proposedTask := *task
 			err := formData.ApplyTo(&proposedTask)
 			if err != nil {
 				return err
 			}
-			proposedTask.ID = t.ID
 			userId := fmt.Sprintf("%d", c.Me.ID)
-			taskId := fmt.Sprintf("%d", t.ID)
+			taskId := fmt.Sprintf("%d", task.ID)
 			up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, &proposedTask)
 			if err != nil {
 				return err
 			}
-			*t = *up
+			*task = *up
 			return nil
 		})
 		c.App.SetFocus(form)
@@ -72,8 +70,7 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			day := 24 * time.Hour
 			due := time.Now().Add(day).Round(day)
 			orig := &apis.Task{State: apis.Open, Status: apis.Backlog, Due: &due}
-			formData := formDataFromTask(orig)
-			form := c.newTaskForm(tt, formData, "Create task", func() error {
+			form := c.newTaskForm(tt, orig, "Create task", func(formData *taskFormData) error {
 				t := &apis.Task{}
 				err := formData.ApplyTo(t)
 				if err != nil {
@@ -118,15 +115,6 @@ func (t *TaskTable) Update(clear bool) {
 				SetAlign(tview.AlignLeft).SetExpansion(1))
 	}
 
-	fmtString := "2006-01-02 15:04:05 MST"
-	statusOrder := map[apis.Status]int{
-		apis.Doing:     0,
-		apis.Todo:      1,
-		apis.Backlog:   2,
-		apis.Done:      3,
-		apis.Abandoned: 4,
-	}
-
 	r, _ := t.Table.GetSelection()
 	ref := t.Table.GetCell(r, 0).GetReference()
 	var focusedTask *apis.Task = nil
@@ -158,11 +146,11 @@ func (t *TaskTable) Update(clear bool) {
 		r = r + 1
 		id := fmt.Sprintf("%d", task.ID)
 		priority := fmt.Sprintf("%d", task.Priority)
-		createdAt := task.CreatedAt.Format(fmtString)
+		createdAt := task.CreatedAt.Format(dateSpec)
 
 		var due string
 		if task.Due != nil {
-			due = task.Due.Format(fmtString)
+			due = task.Due.Format(dateSpec)
 		}
 
 		table.SetCell(r, 0, tview.NewTableCell(id).SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft).SetReference(task))
@@ -206,3 +194,14 @@ func (t *TaskTable) Remove(task *apis.Task) error {
 	t.Tasks = newTasks
 	return nil
 }
+
+var (
+	dateSpec    = "2006-01-02 15:04:05 MST"
+	statusOrder = map[apis.Status]int{
+		apis.Doing:     0,
+		apis.Todo:      1,
+		apis.Backlog:   2,
+		apis.Done:      3,
+		apis.Abandoned: 4,
+	}
+)

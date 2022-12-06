@@ -10,25 +10,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-/*
-Example Task:
-{
-  "id": 3,
-  "created_at": "2022-12-02T16:58:15.698228072-06:00",
-  "updated_at": "2022-12-02T16:58:15.698228072-06:00",
-  "owner_id": 1,
-  "assignee_id": 1,
-  "desc": "",
-  "due": null,
-  "priority": 10,
-  "private": false,
-  "state": "open",
-  "status": "",
-  "comments": null,
-  "annotations":
-}
-*/
-
 type CLI struct {
 	CompletedConfig
 	Root *tview.Flex
@@ -45,12 +26,10 @@ func New(cfg CompletedConfig) (*CLI, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	c.Me = me
 
 	table := NewTaskTable(c, me.AssignedTasks)
 	table.SetTitle("Tasks for " + me.Name)
-
 	c.Root.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
 
 	return c, nil
@@ -58,7 +37,6 @@ func New(cfg CompletedConfig) (*CLI, error) {
 
 func (c *CLI) newQuitModal() {
 	quitModal := tview.NewModal()
-	quitModal.SetTitle("Quit?")
 	quitModal.SetText("Do you want to quit?")
 	quitModal.SetBackgroundColor(tcell.ColorDarkBlue)
 	quitModal.SetTextColor(tcell.ColorWheat)
@@ -113,35 +91,36 @@ func styledForm() *tview.Form {
 	return form
 }
 
-func (c *CLI) newTaskForm(table *TaskTable, t *taskFormData, title string, save func() error) *tview.Form {
+func (c *CLI) newTaskForm(table *TaskTable, task *apis.Task, title string, save func(*taskFormData) error) *tview.Form {
+	formData := formDataFromTask(task)
+
 	form := styledForm()
 	form.SetTitle(title)
 
-	ensureInt := func(t string, l rune) bool {
-		_, err := strconv.Atoi(t)
-		return err == nil
-	}
-
-	form.AddInputField("Description", t.Description, 0, nil, func(text string) { t.Description = text })
-	form.AddInputField("Due", t.Due, 30, nil, func(text string) { t.Due = text })
-	form.AddDropDown("State", []string{"open", "closed"}, getStateIndex(t.State), func(option string, index int) { t.State = apis.State(option) })
-	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), func(option string, index int) { t.Status = apis.Status(option) })
-	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, ensureInt, func(text string) {
+	form.AddInputField("Description", formData.Description, 0, nil, func(text string) { formData.Description = text })
+	form.AddInputField("Due", formData.Due, 30, nil, func(text string) { formData.Due = text })
+	form.AddDropDown("State", []string{"open", "closed"}, getStateIndex(formData.State), func(option string, index int) { formData.State = apis.State(option) })
+	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(formData.Status), func(option string, index int) { formData.Status = apis.Status(option) })
+	form.AddInputField("Priority", strconv.Itoa(int(formData.Priority)), 3, EnsureInt, func(text string) {
 		p, _ := strconv.Atoi(text)
-		t.Priority = apis.Priority(p)
+		formData.Priority = apis.Priority(p)
 	})
-	form.AddCheckbox("Private", t.Private, func(checked bool) { t.Private = checked })
+	form.AddCheckbox("Private", formData.Private, func(checked bool) { formData.Private = checked })
+
+	doSave := func() {
+		if err := save(formData); err != nil {
+			c.Root.RemoveItem(form)
+			c.newErrorModal("Error saving task: " + err.Error())
+		} else {
+			c.Root.RemoveItem(form)
+			c.App.SetFocus(table.Table)
+			table.Update(false)
+		}
+	}
 
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyCtrlS {
-			if err := save(); err != nil {
-				c.newErrorModal("Error saving task: " + err.Error())
-				c.Root.RemoveItem(form)
-			} else {
-				c.Root.RemoveItem(form)
-				c.App.SetFocus(table)
-				table.Update(false)
-			}
+			doSave()
 			return nil
 		}
 		return event
@@ -153,17 +132,7 @@ func (c *CLI) newTaskForm(table *TaskTable, t *taskFormData, title string, save 
 	}
 	form.SetCancelFunc(cancel)
 	form.AddButton("Cancel", cancel)
-	form.AddButton("Save", func() {
-		if err := save(); err != nil {
-			c.newErrorModal("Error saving task: " + err.Error())
-			c.Root.RemoveItem(form)
-			return
-		} else {
-			c.Root.RemoveItem(form)
-			c.App.SetFocus(table)
-			table.Update(false)
-		}
-	})
+	form.AddButton("Save", doSave)
 
 	c.Root.SetDirection(tview.FlexRow).AddItem(form, 0, 1, true)
 	return form
