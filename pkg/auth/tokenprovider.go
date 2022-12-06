@@ -105,7 +105,7 @@ func NewTokenProvider(c CompletedConfig) (*TokenProvider, error) {
 		ClientID:    c.ClientId,
 		Endpoint:    provider.Endpoint(),
 		RedirectURL: c.RedirectURL,
-		Scopes:      []string{oidc.ScopeOpenID, "profile", "email"},
+		Scopes:      []string{oidc.ScopeOpenID},
 	}
 
 	return &TokenProvider{
@@ -211,89 +211,104 @@ func (l *TokenProvider) GetIdToken() (string, error) {
 	// we'll open the browser here to set the initial state and nonce
 	// before redirecting over to the SSO server for login
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		state, err := randString(16)
-		if err != nil {
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
+		handleIndex := func() {
+			state, err := randString(16)
+			if err != nil {
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+				return
+			}
+
+			nonce, err := randString(16)
+			if err != nil {
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+				return
+			}
+
+			setCallbackCookie(w, r, "state", state)
+			setCallbackCookie(w, r, "nonce", nonce)
+
+			http.Redirect(w, r, l.OAuth2Config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.AccessTypeOffline), http.StatusFound)
 		}
 
-		nonce, err := randString(16)
-		if err != nil {
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
+		handleExchange := func() {
+			defer close(stop)
+			state, err := r.Cookie("state")
+			if err != nil {
+				idErr = err
+				http.Error(w, "state not found", http.StatusBadRequest)
+				return
+			}
+
+			if r.URL.Query().Get("state") != state.Value {
+				msg := "state did not match"
+				idErr = errors.New(msg)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+
+			oauth2Token, err := l.OAuth2Config.Exchange(l.ClientContext, r.URL.Query().Get("code"))
+			if err != nil {
+				idErr = err
+				http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+			if !ok {
+				msg := "no id_token field in oauth2 token"
+				idErr = errors.New(msg)
+				http.Error(w, msg, http.StatusInternalServerError)
+				return
+			}
+
+			idToken, err := l.Verify(rawIDToken)
+			if err != nil {
+				idErr = err
+				http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			nonce, err := r.Cookie("nonce")
+			if err != nil {
+				idErr = err
+				http.Error(w, "nonce not found", http.StatusBadRequest)
+				return
+			}
+
+			if idToken.Nonce != nonce.Value {
+				msg := "nonce did not match"
+				idErr = errors.New(msg)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+
+			if err = l.saveToken(oauth2Token); err != nil {
+				idErr = err
+				http.Error(w, "Failed to save oauth token: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			idData = rawIDToken
+			w.Write([]byte("Authorization Successful"))
 		}
 
-		setCallbackCookie(w, r, "state", state)
-		setCallbackCookie(w, r, "nonce", nonce)
-
-		http.Redirect(w, r, l.OAuth2Config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.AccessTypeOffline), http.StatusFound)
+		q := r.URL.Query()
+		switch {
+		case r.Method == "GET" && r.URL.Path == "/" && q.Get("error") != "":
+			http.Error(w, q.Get("error"), http.StatusForbidden)
+		case r.Method == "GET" && r.URL.Path == "/" && q.Get("code") != "":
+			handleExchange()
+		case r.Method == "GET" && r.URL.Path == "/":
+			handleIndex()
+		default:
+			http.NotFound(w, r)
+		}
 	})
 
 	// The SSO server will redirect the browser back here. On successful login, the redirect
 	// will contain the state and nonce we sent to it in the original redirect above along with
 	// an auth code that can be exchanged on the back channel for an access token that comes with
 	// an OIDC identity token.
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		defer close(stop)
-		state, err := r.Cookie("state")
-		if err != nil {
-			idErr = err
-			http.Error(w, "state not found", http.StatusBadRequest)
-			return
-		}
-
-		if r.URL.Query().Get("state") != state.Value {
-			msg := "state did not match"
-			idErr = errors.New(msg)
-			http.Error(w, msg, http.StatusBadRequest)
-			return
-		}
-
-		oauth2Token, err := l.OAuth2Config.Exchange(l.ClientContext, r.URL.Query().Get("code"))
-		if err != nil {
-			idErr = err
-			http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-		if !ok {
-			msg := "no id_token field in oauth2 token"
-			idErr = errors.New(msg)
-			http.Error(w, msg, http.StatusInternalServerError)
-			return
-		}
-
-		idToken, err := l.Verify(rawIDToken)
-		if err != nil {
-			idErr = err
-			http.Error(w, "Failed to verify ID Token: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		nonce, err := r.Cookie("nonce")
-		if err != nil {
-			idErr = err
-			http.Error(w, "nonce not found", http.StatusBadRequest)
-			return
-		}
-
-		if idToken.Nonce != nonce.Value {
-			msg := "nonce did not match"
-			idErr = errors.New(msg)
-			http.Error(w, msg, http.StatusBadRequest)
-			return
-		}
-
-		if err = l.saveToken(oauth2Token); err != nil {
-			idErr = err
-			http.Error(w, "Failed to save oauth token: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		idData = rawIDToken
-		w.Write([]byte("Authorization Successful"))
-	})
 
 	errChan := make(chan error, 1)
 	go func() {
