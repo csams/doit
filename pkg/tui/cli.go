@@ -1,11 +1,11 @@
-package cli
+package tui
 
 import (
 	"fmt"
 	"strconv"
 
 	"github.com/csams/doit/pkg/apis"
-	generic "github.com/csams/doit/pkg/cli/client"
+	generic "github.com/csams/doit/pkg/tui/client"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )

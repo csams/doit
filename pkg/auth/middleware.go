@@ -13,6 +13,7 @@ import (
 type userClaims struct {
 	Name     string `json:"name"`
 	Username string `json:"preferred_username"`
+	Audience string `json:"aud"`
 }
 
 func Authenticator(db *gorm.DB, provider *TokenProvider) func(http.Handler) http.Handler {
@@ -45,6 +46,11 @@ func Authenticator(db *gorm.DB, provider *TokenProvider) func(http.Handler) http
 			tok.Claims(u)
 			if u.Name == "" || u.Username == "" {
 				http.Error(w, "Invalid claims. Require name and preferred_username", http.StatusBadRequest)
+				return
+			}
+
+			if u.Audience != "todo-app" {
+				http.Error(w, "Invalid audience.", http.StatusBadRequest)
 				return
 			}
 

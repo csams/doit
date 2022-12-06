@@ -1,10 +1,10 @@
-package cli
+package tui
 
 import (
 	"strings"
 
 	"github.com/csams/doit/pkg/auth"
-	"github.com/csams/doit/pkg/cli/client"
+	"github.com/csams/doit/pkg/tui/client"
 	"github.com/go-logr/logr"
 	"github.com/rivo/tview"
 )

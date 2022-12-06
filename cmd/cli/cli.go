@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/csams/doit/pkg/cli"
 	"github.com/csams/doit/pkg/errors"
+	cli "github.com/csams/doit/pkg/tui"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
