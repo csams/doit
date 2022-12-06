@@ -13,6 +13,7 @@ func NewOptions() *Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
+	fs.String("storage.dsn", o.DSN, "DSN to the database. Leave blank for load sqlite3.")
 }
 
 func (o *Options) Validate() []error {
