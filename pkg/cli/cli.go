@@ -130,10 +130,10 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 		due = orig.Due.Format(fmtString)
 	}
 
-	form.AddInputField("Description", "", 0, nil, func(text string) { orig.Description = text })
+	form.AddInputField("Description", orig.Description, 0, nil, func(text string) { orig.Description = text })
 	form.AddInputField("Due", due, 30, nil, func(text string) { due = text })
-	form.AddDropDown("State", []string{"open", "closed"}, 0, func(option string, index int) { orig.State = apis.State(option) })
-	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, 0, func(option string, index int) { orig.Status = apis.Status(option) })
+	form.AddDropDown("State", []string{"open", "closed"}, getStateIndex(orig.State), func(option string, index int) { orig.State = apis.State(option) })
+	form.AddDropDown("Status", []string{"backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(orig.Status), func(option string, index int) { orig.Status = apis.Status(option) })
 	form.AddInputField("Priority", "0", 3, ensureInt, func(text string) {
 		p, _ := strconv.Atoi(text)
 		orig.Priority = apis.Priority(p)
@@ -148,8 +148,11 @@ func (c *CLI) newCreateTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 				c.newErrorModal("Error parsing due date: " + err.Error())
 				c.Root.RemoveItem(form)
 				return
+			} else {
+				orig.Due = &dueDate
 			}
-			orig.Due = &dueDate
+		} else {
+			orig.Due = nil
 		}
 		userId := fmt.Sprintf("%d", c.Me.ID)
 		up, err := generic.Post(c.Client, "users/"+userId+"/tasks", orig)
@@ -186,6 +189,8 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 	form := styledForm()
 	form.SetTitle("Edit Task")
 
+	ensureInt := func(t string, l rune) bool { _, err := strconv.Atoi(t); return err == nil }
+
 	var due string
 
 	fmtString := "2006-01-02 15:04:05 MST"
@@ -197,7 +202,7 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 	form.AddInputField("Due", due, 30, nil, func(text string) { due = text })
 	form.AddDropDown("State", []string{"undefined", "open", "closed"}, getStateIndex(t.State), func(option string, index int) { t.State = apis.State(option) })
 	form.AddDropDown("Status", []string{"undefined", "backlog", "todo", "doing", "done", "abandoned"}, getStatusIndex(t.Status), func(option string, index int) { t.Status = apis.Status(option) })
-	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, func(t string, l rune) bool { _, err := strconv.Atoi(t); return (err == nil) }, func(text string) {
+	form.AddInputField("Priority", strconv.Itoa(int(t.Priority)), 3, ensureInt, func(text string) {
 		p, _ := strconv.Atoi(text)
 		t.Priority = apis.Priority(p)
 	})
@@ -211,8 +216,9 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 				c.newErrorModal("Error editing task: " + err.Error())
 				c.Root.RemoveItem(form)
 				return
+			} else {
+				t.Due = &dueDate
 			}
-			t.Due = &dueDate
 		} else {
 			t.Due = nil
 		}
@@ -249,7 +255,7 @@ func (c *CLI) newEditTaskForm(table *TaskTable, orig *apis.Task) *tview.Form {
 func (c *CLI) newDeleteModal(table *TaskTable, orig *apis.Task) *tview.Modal {
 	modal := tview.NewModal()
 	modal.SetTitle("Delete?")
-	modal.SetText("Do you want to delete task [")
+	modal.SetText("Do you want to delete task [" + orig.Description + "]")
 	modal.SetBackgroundColor(tcell.ColorDarkBlue)
 	modal.SetTextColor(tcell.ColorWheat)
 	modal.SetButtonBackgroundColor(tcell.ColorDarkViolet)
