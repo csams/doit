@@ -1,5 +1,6 @@
 = Work Items
 
+. Ensure the newly created or edited task is in focus when returning to the task table.
 . Design task sharing CLI screens.
 . Add task list sharing to the route handlers.
 . Refactor routing to better segment the handlers.
