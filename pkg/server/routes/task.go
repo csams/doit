@@ -12,11 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type TaskList struct {
-	Length int         `json:"length"`
-	Tasks  []apis.Task `json:"tasks"`
-}
-
 type TaskController struct {
 	DB  *gorm.DB
 	Log logr.Logger
@@ -56,17 +51,19 @@ func (c *TaskController) List(w http.ResponseWriter, r *http.Request) {
 
 	var results []apis.Task
 
-	if err := db.Where("owner_id = ?", u.ID).Find(&results).Error; err != nil {
-		http.Error(w, "error retrieving tasks: "+err.Error(), http.StatusInternalServerError)
-		return
+	if chi.URLParam(r, "assignee") != "" {
+		if err := db.Where("assignee_id = ?", u.ID).Find(&results).Error; err != nil {
+			http.Error(w, "error retrieving tasks: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		if err := db.Where("owner_id = ?", u.ID).Find(&results).Error; err != nil {
+			http.Error(w, "error retrieving tasks: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
-	result := TaskList{
-		Length: len(results),
-		Tasks:  results,
-	}
-
-	render.JSON(w, r, result)
+	render.JSON(w, r, apis.TaskList{Tasks: results})
 }
 
 func (c *TaskController) Create(w http.ResponseWriter, r *http.Request) {

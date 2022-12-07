@@ -29,7 +29,7 @@ func New(cfg CompletedConfig) (*CLI, error) {
 	c.Me = me
 
 	table := NewTaskTable(c, me.AssignedTasks)
-	table.SetTitle("Tasks for " + me.Username)
+	table.SetTitle("Tasks assigned to " + me.Username)
 	c.Root.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
 
 	return c, nil

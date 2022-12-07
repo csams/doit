@@ -23,13 +23,7 @@ type TaskModel struct {
 	LastTouched bool
 }
 
-func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
-	table := tview.NewTable().
-		SetFixed(1, 1).            // the first column and first row are visible even when scrolling
-		SetSelectable(true, false) // (rows?, cols?) - select entire rows not columns
-	table.SetBorder(true)
-	table.SetSeparator(tview.Borders.Vertical)
-
+func (t *TaskTable) SetTasks(tasks []apis.Task) {
 	model := make([]TaskModel, len(tasks))
 	for i := range tasks {
 		model[i] = TaskModel{
@@ -37,12 +31,23 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			LastTouched: false,
 		}
 	}
+	t.Tasks = model
+	t.Update(true)
+}
+
+func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
+	table := tview.NewTable().
+		SetFixed(1, 1).            // the first column and first row are visible even when scrolling
+		SetSelectable(true, false) // (rows?, cols?) - select entire rows not columns
+	table.SetBorder(true)
+	table.SetSeparator(tview.Borders.Vertical)
 
 	tt := &TaskTable{
 		CLI:   c,
-		Tasks: model,
 		Table: table,
 	}
+
+	tt.SetTasks(tasks)
 
 	table.SetSelectedFunc(func(row, col int) {
 		ref := table.GetCell(row, 0).GetReference()
@@ -77,6 +82,26 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 		}
 
 		switch event.Rune() {
+		case 'a':
+			userId := fmt.Sprintf("%d", c.Me.ID)
+			taskList, err := generic.Get[apis.TaskList](c.Client, "users/"+userId+"/tasks?assignee=1")
+			if err != nil {
+				c.newErrorModal(err.Error())
+				return nil
+			}
+			tt.SetTasks(taskList.Tasks)
+			tt.SetTitle("Tasks assigned to " + c.Me.Username)
+			return nil
+		case 'o':
+			userId := fmt.Sprintf("%d", c.Me.ID)
+			taskList, err := generic.Get[apis.TaskList](c.Client, "users/"+userId+"/tasks")
+			if err != nil {
+				c.newErrorModal(err.Error())
+				return nil
+			}
+			tt.SetTasks(taskList.Tasks)
+			tt.SetTitle("Tasks owned by " + c.Me.Username)
+			return nil
 		case 'd':
 			row, _ := table.GetSelection()
 			ref := table.GetCell(row, 0).GetReference()
@@ -123,7 +148,6 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 		return event // returning the event means other handlers also see it
 	})
 
-	tt.Update(false)
 	return tt
 }
 
@@ -163,7 +187,7 @@ func (t *TaskTable) Update(clear bool) {
 	for r := range tasks {
 		task := &tasks[r]
 		r = r + 1
-		id := fmt.Sprintf("%d", task.ID)
+
 		priority := fmt.Sprintf("%d", task.Priority)
 		createdAt := task.CreatedAt.Format(dateSpec)
 
@@ -172,14 +196,14 @@ func (t *TaskTable) Update(clear bool) {
 			due = task.Due.Format(dateSpec)
 		}
 
-		table.SetCell(r, 0, tview.NewTableCell(id).SetTextColor(tcell.ColorYellow).SetAlign(tview.AlignLeft).SetReference(task))
-		table.SetCell(r, 1, tview.NewTableCell(string(createdAt)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
-		table.SetCell(r, 2, tview.NewTableCell(task.Description).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetExpansion(4))
-		table.SetCell(r, 3, tview.NewTableCell(due).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
-		table.SetCell(r, 4, tview.NewTableCell(priority).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
-		table.SetCell(r, 5, tview.NewTableCell(string(task.State)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
-		table.SetCell(r, 6, tview.NewTableCell(string(task.Status)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
-		table.SetCell(r, 7, tview.NewTableCell(privateMap[task.Private]).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		// id := fmt.Sprintf("%d", task.ID)
+		table.SetCell(r, 0, tview.NewTableCell(string(createdAt)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetReference(task))
+		table.SetCell(r, 1, tview.NewTableCell(task.Description).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetExpansion(4))
+		table.SetCell(r, 2, tview.NewTableCell(due).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		table.SetCell(r, 3, tview.NewTableCell(priority).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		table.SetCell(r, 4, tview.NewTableCell(string(task.State)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		table.SetCell(r, 5, tview.NewTableCell(string(task.Status)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
+		table.SetCell(r, 6, tview.NewTableCell(privateMap[task.Private]).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 
 		if task.LastTouched {
 			table.Select(r, 0)
@@ -210,7 +234,10 @@ func (t *TaskTable) Remove(task *apis.Task) error {
 }
 
 var (
-	dateSpec    = "2006-01-02 15:04:05 MST"
+	dateSpec = "2006-01-02 15:04:05 MST"
+
+	privateMap = map[bool]string{true: "✓", false: "✗"}
+
 	statusOrder = map[apis.Status]int{
 		apis.Doing:     0,
 		apis.Todo:      1,
@@ -218,9 +245,8 @@ var (
 		apis.Done:      3,
 		apis.Abandoned: 4,
 	}
-	privateMap    = map[bool]string{true: "✓", false: "✗"}
+
 	table_headers = []string{
-		"Id",
 		"Created",
 		"Description",
 		"Due",

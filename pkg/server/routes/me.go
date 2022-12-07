@@ -3,7 +3,6 @@ package routes
 import (
 	"net/http"
 
-	"github.com/csams/doit/pkg/apis"
 	"github.com/csams/doit/pkg/auth"
 	"github.com/go-logr/logr"
 	"gorm.io/gorm"
@@ -29,7 +28,14 @@ func (c *MeController) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := c.DB.Preload("AssignedTasks", "state = ?", apis.Open).First(u, u.ID).Error; err != nil {
+	if err := c.DB.
+		Preload("AssignedTasks").
+		Preload("OwnedTasks").
+		Preload("AssignedTasks.Owner").
+		Preload("AssignedTasks.Assignee").
+		Preload("OwnedTasks.Owner").
+		Preload("OwnedTasks.Assignee").
+		First(u, u.ID).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

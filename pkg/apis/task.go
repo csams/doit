@@ -10,18 +10,22 @@ import (
 	"github.com/csams/doit/pkg/set"
 )
 
+type TaskList struct {
+	Tasks []Task `json:"tasks"`
+}
+
 // Task is some unit of work to do
 type Task struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
+	ID        uint           `gorm:"primaryKey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
-	OwnerId uint  `json:"owner_id"`
-	Owner   *User `gorm:"foreignKey:ID;references:OwnerId" json:"-"`
+	OwnerId uint `json:"owner_id"`
+	Owner   User `gorm:"foreignKey:ID;references:OwnerId"`
 
-	AssigneeId uint  `json:"assignee_id"`
-	Assignee   *User `gorm:"foreignKey:ID;references:AssigneeId" json:"-"`
+	AssigneeId uint `json:"assignee_id"`
+	Assignee   User `gorm:"foreignKey:ID;references:AssigneeId"`
 
 	Description string       `json:"desc"`
 	Due         *time.Time   `json:"due"`
