@@ -15,7 +15,12 @@ import (
 type TaskTable struct {
 	*tview.Table
 	CLI   *CLI
-	Tasks []apis.Task
+	Tasks []TaskModel
+}
+
+type TaskModel struct {
+	*apis.Task
+	LastTouched bool
 }
 
 func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
@@ -25,17 +30,29 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 	table.SetBorder(true)
 	table.SetSeparator(tview.Borders.Vertical)
 
+	model := make([]TaskModel, len(tasks))
+	for i := range tasks {
+		model[i] = TaskModel{
+			Task:        &tasks[i],
+			LastTouched: false,
+		}
+	}
+
 	tt := &TaskTable{
 		CLI:   c,
-		Tasks: tasks,
+		Tasks: model,
 		Table: table,
 	}
 
 	table.SetSelectedFunc(func(row, col int) {
-		task := table.GetCell(row, 0).GetReference().(*apis.Task)
+		ref := table.GetCell(row, 0).GetReference()
+		if ref == nil {
+			return
+		}
+		task := ref.(*TaskModel)
 
-		form := c.newTaskForm(tt, task, "Edit task", func(formData *taskFormData) error {
-			proposedTask := *task
+		form := c.newTaskForm(tt, task.Task, "Edit task", func(formData *taskFormData) error {
+			proposedTask := *task.Task
 			err := formData.ApplyTo(&proposedTask)
 			if err != nil {
 				return err
@@ -46,15 +63,15 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			if err != nil {
 				return err
 			}
-			*task = *up
+			*task.Task = *up
+			task.LastTouched = true
 			return nil
 		})
 		c.App.SetFocus(form)
 	})
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyEsc:
+		if event.Key() == tcell.KeyEsc {
 			c.newQuitModal()
 			return nil
 		}
@@ -62,13 +79,18 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 		switch event.Rune() {
 		case 'd':
 			row, _ := table.GetSelection()
-			t := table.GetCell(row, 0).GetReference().(*apis.Task)
-			modal := c.newDeleteModal(tt, t)
-			c.App.SetFocus(modal)
+			ref := table.GetCell(row, 0).GetReference()
+			if ref != nil {
+				t := ref.(*TaskModel)
+				modal := c.newDeleteModal(tt, t)
+				c.App.SetFocus(modal)
+			}
 			return nil
 		case 'n':
 			day := 24 * time.Hour
 			due := time.Now().Add(day).Round(day)
+			row, _ := table.GetSelection()
+			ref := table.GetCell(row, 0).GetReference()
 			orig := &apis.Task{State: apis.Open, Status: apis.Backlog, Due: &due}
 			form := c.newTaskForm(tt, orig, "Create task", func(formData *taskFormData) error {
 				t := &apis.Task{}
@@ -81,7 +103,11 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 				if err != nil {
 					return err
 				}
-				tt.Tasks = append(tt.Tasks, *up)
+				if ref != nil {
+					prev := ref.(*TaskModel)
+					prev.LastTouched = false
+				}
+				tt.Tasks = append(tt.Tasks, TaskModel{Task: up, LastTouched: true})
 				return nil
 			})
 			c.App.SetFocus(form)
@@ -113,13 +139,6 @@ func (t *TaskTable) Update(clear bool) {
 				SetTextColor(tcell.ColorViolet).
 				SetSelectable(false).
 				SetAlign(tview.AlignLeft).SetExpansion(1))
-	}
-
-	r, _ := t.Table.GetSelection()
-	ref := t.Table.GetCell(r, 0).GetReference()
-	var focusedTask *apis.Task = nil
-	if ref != nil {
-		focusedTask = ref.(*apis.Task)
 	}
 
 	// primary sort by status and then secondary sorts by due date and priority
@@ -162,14 +181,9 @@ func (t *TaskTable) Update(clear bool) {
 		table.SetCell(r, 6, tview.NewTableCell(string(task.Status)).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 		table.SetCell(r, 7, tview.NewTableCell(privateMap[task.Private]).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft))
 
-		if focusedTask != nil {
-			if task.ID == focusedTask.ID {
-				table.Select(r, 1)
-			}
+		if task.LastTouched {
+			table.Select(r, 0)
 		}
-	}
-	if focusedTask == nil {
-		table.Select(1, 1)
 	}
 }
 
@@ -187,7 +201,7 @@ func (t *TaskTable) Remove(task *apis.Task) error {
 		return errors.New("could not find task to delete: " + taskId)
 	}
 
-	newTasks := make([]apis.Task, 0)
+	newTasks := make([]TaskModel, 0)
 	newTasks = append(newTasks, t.Tasks[:toRemove]...)
 	newTasks = append(newTasks, t.Tasks[toRemove+1:]...)
 
@@ -203,5 +217,16 @@ var (
 		apis.Backlog:   2,
 		apis.Done:      3,
 		apis.Abandoned: 4,
+	}
+	privateMap    = map[bool]string{true: "✓", false: "✗"}
+	table_headers = []string{
+		"Id",
+		"Created",
+		"Description",
+		"Due",
+		"Priority",
+		"State",
+		"Status",
+		"Private",
 	}
 )

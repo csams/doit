@@ -138,7 +138,7 @@ func (c *CLI) newTaskForm(table *TaskTable, task *apis.Task, title string, save 
 	return form
 }
 
-func (c *CLI) newDeleteModal(table *TaskTable, orig *apis.Task) *tview.Modal {
+func (c *CLI) newDeleteModal(table *TaskTable, orig *TaskModel) *tview.Modal {
 	modal := tview.NewModal()
 	modal.SetTitle("Delete?")
 	modal.SetText("Do you want to delete task [" + orig.Description + "]")
@@ -161,7 +161,7 @@ func (c *CLI) newDeleteModal(table *TaskTable, orig *apis.Task) *tview.Modal {
 				c.Root.RemoveItem(modal)
 				return
 			}
-			if err = table.Remove(orig); err != nil {
+			if err = table.Remove(orig.Task); err != nil {
 				c.App.SetRoot(c.Root, true)
 				c.App.SetFocus(table.Table)
 				return
@@ -179,8 +179,7 @@ func (c *CLI) newDeleteModal(table *TaskTable, orig *apis.Task) *tview.Modal {
 }
 
 var (
-	privateMap = map[bool]string{true: "✓", false: "✗"}
-	statusMap  = map[apis.Status]int{
+	statusMap = map[apis.Status]int{
 		apis.Backlog:   0,
 		apis.Todo:      1,
 		apis.Doing:     2,
@@ -190,16 +189,6 @@ var (
 	stateMap = map[apis.State]int{
 		apis.Open:   0,
 		apis.Closed: 1,
-	}
-	table_headers = []string{
-		"Id",
-		"Created",
-		"Description",
-		"Due",
-		"Priority",
-		"State",
-		"Status",
-		"Private",
 	}
 )
 
