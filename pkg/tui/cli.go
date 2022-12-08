@@ -58,9 +58,55 @@ func (c *CLI) newQuitModal() {
 	c.App.SetFocus(quitModal)
 }
 
-func (c *CLI) newErrorModal(msg string) {
+func (c *CLI) newHelp(keys map[string]string) {
+	grid := tview.NewGrid()
+	grid.SetColumns(0, -3, 0)
+	grid.SetRows(0)
+	table := tview.NewTable().
+		SetFixed(1, 0).
+		SetSelectable(false, false)
+	table.SetBorder(true)
+	table.SetSeparator(tview.Borders.Vertical)
+	grid.AddItem(table, 0, 1, 1, 1, 0, 0, true)
+
+	for c, h := range []string{"Key", "Description"} {
+		table.SetCell(0, c,
+			tview.NewTableCell(h).
+				SetTextColor(tcell.ColorViolet).
+				SetSelectable(false).
+				SetAlign(tview.AlignLeft).SetExpansion(1))
+	}
+
+	r := 1
+	for k, v := range keys {
+		table.SetCell(r, 0, tview.NewTableCell(k).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetExpansion(1))
+		table.SetCell(r, 1, tview.NewTableCell(v).SetTextColor(tcell.ColorWheat).SetAlign(tview.AlignLeft).SetExpansion(4))
+		r += 1
+	}
+
+	hide := func() {
+		c.App.SetRoot(c.Root, true)
+		c.App.SetFocus(c.Root)
+	}
+
+	table.SetDoneFunc(func(key tcell.Key) {
+		hide()
+	})
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == 'q' {
+			hide()
+			return nil
+		}
+		return event
+	})
+
+	c.App.SetRoot(grid, true)
+}
+
+func (c *CLI) newMessageModal(title, msg string) {
 	modal := tview.NewModal()
-	modal.SetTitle("Error")
+	modal.SetTitle(title)
 	modal.SetText(msg)
 	modal.SetBackgroundColor(tcell.ColorDarkBlue)
 	modal.SetTextColor(tcell.ColorWheat)
@@ -76,6 +122,10 @@ func (c *CLI) newErrorModal(msg string) {
 
 	c.App.SetRoot(modal, false)
 	c.App.SetFocus(modal)
+}
+
+func (c *CLI) newErrorModal(msg string) {
+	c.newMessageModal("Error", msg)
 }
 
 func styledForm() *tview.Form {
@@ -189,6 +239,16 @@ var (
 	stateMap = map[apis.State]int{
 		apis.Open:   0,
 		apis.Closed: 1,
+	}
+
+	tableKeyBindings = map[string]string{
+		"n":       "New Task",
+		"<Enter>": "Edit Task",
+		"o":       "Tasks I own",
+		"a":       "Tasks I'm assigned",
+		"q":       "Quit with prompt",
+		"Q":       "Quit immediately",
+		"?":       "Help",
 	}
 )
 
