@@ -18,29 +18,37 @@ type TaskTable struct {
 	Tasks []TaskModel
 }
 
+func (t *TaskTable) editTask(task *TaskModel) {
+	form := t.CLI.newTaskForm(t, task.Task, "Edit task", func(formData *taskFormData) error {
+		proposedTask := *task.Task
+		err := formData.ApplyTo(&proposedTask)
+		if err != nil {
+			return err
+		}
+		userId := fmt.Sprintf("%d", t.CLI.Me.ID)
+		taskId := fmt.Sprintf("%d", task.ID)
+		up, err := generic.Put(t.CLI.Client, "users/"+userId+"/tasks/"+taskId, &proposedTask)
+		if err != nil {
+			return err
+		}
+		*task.Task = *up
+		task.LastTouched = true
+		return nil
+	})
+	t.CLI.App.SetFocus(form)
+}
+
 type TaskModel struct {
 	*apis.Task
 	LastTouched bool
 }
 
-func (t *TaskTable) SetTasks(tasks []apis.Task) {
-	model := make([]TaskModel, len(tasks))
-	for i := range tasks {
-		model[i] = TaskModel{
-			Task:        &tasks[i],
-			LastTouched: false,
-		}
-	}
-	t.Tasks = model
-	t.Update(true)
-}
-
 func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 	table := tview.NewTable().
-		SetFixed(1, 1).            // the first column and first row are visible even when scrolling
-		SetSelectable(true, false) // (rows?, cols?) - select entire rows not columns
+		SetFixed(1, 1). // the first column and first row are visible even when scrolling
+		SetSelectable(true, false).
+		SetSeparator(tview.Borders.Vertical) // (rows?, cols?) - select entire rows not columns
 	table.SetBorder(true)
-	table.SetSeparator(tview.Borders.Vertical)
 
 	tt := &TaskTable{
 		CLI:   c,
@@ -55,24 +63,7 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			return
 		}
 		task := ref.(*TaskModel)
-
-		form := c.newTaskForm(tt, task.Task, "Edit task", func(formData *taskFormData) error {
-			proposedTask := *task.Task
-			err := formData.ApplyTo(&proposedTask)
-			if err != nil {
-				return err
-			}
-			userId := fmt.Sprintf("%d", c.Me.ID)
-			taskId := fmt.Sprintf("%d", task.ID)
-			up, err := generic.Put(c.Client, "users/"+userId+"/tasks/"+taskId, &proposedTask)
-			if err != nil {
-				return err
-			}
-			*task.Task = *up
-			task.LastTouched = true
-			return nil
-		})
-		c.App.SetFocus(form)
+		tt.editTask(task)
 	})
 
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -101,6 +92,10 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 			}
 			tt.SetTasks(taskList.Tasks)
 			tt.SetTitle("Tasks owned by " + c.Me.Username)
+			return nil
+
+		case '?':
+			c.newHelp(taskTableKeyBindings)
 			return nil
 		case 'd':
 			row, _ := table.GetSelection()
@@ -151,13 +146,27 @@ func NewTaskTable(c *CLI, tasks []apis.Task) *TaskTable {
 	return tt
 }
 
+func (t *TaskTable) SetTasks(tasks []apis.Task) {
+	model := make([]TaskModel, len(tasks))
+	for i := range tasks {
+		model[i] = TaskModel{
+			Task:        &tasks[i],
+			LastTouched: false,
+		}
+	}
+	t.Tasks = model
+	t.Update(true)
+}
+
 func (t *TaskTable) Update(clear bool) {
 	table := t.Table
 	tasks := t.Tasks
 	if clear {
 		t.Clear()
 	}
-	for c, h := range table_headers {
+
+	// add table header
+	for c, h := range taskTableHeaders {
 		table.SetCell(0, c,
 			tview.NewTableCell(h).
 				SetTextColor(tcell.ColorViolet).
@@ -165,7 +174,7 @@ func (t *TaskTable) Update(clear bool) {
 				SetAlign(tview.AlignLeft).SetExpansion(1))
 	}
 
-	// primary sort by status and then secondary sorts by due date and priority
+	// primary sort tasks by status and then secondary sort by due date and priority
 	sort.SliceStable(tasks, func(i, j int) bool {
 		return tasks[i].Priority > tasks[j].Priority
 	})
@@ -184,6 +193,7 @@ func (t *TaskTable) Update(clear bool) {
 		return statusOrder[tasks[i].Status] < statusOrder[tasks[j].Status]
 	})
 
+	// add tasks to the table
 	for r := range tasks {
 		task := &tasks[r]
 		r = r + 1
@@ -246,7 +256,7 @@ var (
 		apis.Abandoned: 4,
 	}
 
-	table_headers = []string{
+	taskTableHeaders = []string{
 		"Created",
 		"Description",
 		"Due",
@@ -254,5 +264,15 @@ var (
 		"State",
 		"Status",
 		"Private",
+	}
+
+	taskTableKeyBindings = []KeyBinding{
+		{"n", "Create a new Task"},
+		{"<Enter>", "Edit the selected task"},
+		{"o", "See tasks I own"},
+		{"a", "See tasks assigned to me"},
+		{"q", "Quit with prompt"},
+		{"Q", "Quit Immediately"},
+		{"?", "Show this help"},
 	}
 )
