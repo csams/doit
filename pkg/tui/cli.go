@@ -12,6 +12,7 @@ import (
 
 type CLI struct {
 	CompletedConfig
+	App  *tview.Application
 	Root *tview.Flex
 	Me   *apis.User
 }
@@ -19,6 +20,7 @@ type CLI struct {
 func New(cfg CompletedConfig) (*CLI, error) {
 	c := &CLI{
 		CompletedConfig: cfg,
+		App:             tview.NewApplication(),
 		Root:            tview.NewFlex(),
 	}
 
@@ -31,6 +33,8 @@ func New(cfg CompletedConfig) (*CLI, error) {
 	table := NewTaskTable(c, me.AssignedTasks)
 	table.SetTitle("Tasks assigned to " + me.Username)
 	c.Root.AddItem(table, 0, 1, true) // (item, fixedSize; 0 means not fixed, proportion, focus?)
+
+	c.App.SetRoot(c.Root, true)
 
 	return c, nil
 }

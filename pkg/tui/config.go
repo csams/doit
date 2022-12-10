@@ -6,7 +6,6 @@ import (
 	"github.com/csams/doit/pkg/auth"
 	"github.com/csams/doit/pkg/tui/client"
 	"github.com/go-logr/logr"
-	"github.com/rivo/tview"
 )
 
 type Config struct {
@@ -24,7 +23,6 @@ type completedConfig struct {
 }
 
 type Common struct {
-	App    *tview.Application
 	Client client.Client
 	Log    logr.Logger
 }
@@ -46,10 +44,6 @@ func NewConfig(o *Options, log logr.Logger) *Config {
 
 func (c *Config) Complete() (CompletedConfig, error) {
 	completeAuth := c.Auth.Complete()
-
-	if c.App == nil {
-		c.App = tview.NewApplication()
-	}
 
 	if c.Client.Tokens == nil {
 		var err error
